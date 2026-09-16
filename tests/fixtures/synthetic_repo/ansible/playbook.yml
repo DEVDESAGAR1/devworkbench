@@ -1,0 +1,14 @@
+---
+- name: Configure Webservers
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Ensure nginx is installed
+      package:
+        name: nginx
+        state: present
+    - name: Ensure nginx service is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes

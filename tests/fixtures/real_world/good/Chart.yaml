@@ -1,0 +1,9 @@
+apiVersion: v2
+name: payment-processor
+description: Production Payment Processing Microservice Helm Chart
+type: application
+version: 1.4.0
+appVersion: "2.4.1"
+maintainers:
+  - name: DevOps Core Team
+    email: devops@example.com

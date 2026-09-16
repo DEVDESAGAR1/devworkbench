@@ -1,0 +1,11 @@
+pipeline {
+    environment {
+        AWS_SECRET_KEY = 'AKIA_SECRET_PASSWORD_12345'
+    }
+    stages {
+        stage('Deploy') {
+            steps {
+                sh 'echo "Deploying..."'
+            }
+        }
+    // Missing closing bracket for stages and pipeline

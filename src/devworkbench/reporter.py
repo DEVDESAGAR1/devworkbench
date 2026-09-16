@@ -1,0 +1,563 @@
+"""Presentation and reporting layer for DevWorkBench."""
+
+import json
+import sys
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from rich.console import Console
+from rich.table import Table
+from rich.tree import Tree
+
+from devworkbench.adapters.base import BaseAdapter
+from devworkbench.models import (
+    BuildLogReport,
+    Diagnostic,
+    DiagnosticSeverity,
+    FileDetection,
+    FixCandidate,
+    FixPlan,
+    FixReport,
+    HelmChart,
+    ScanResult,
+    Technology,
+    ToolWarning,
+)
+from devworkbench.rules.base import BaseRule
+
+
+class HumanReporter:
+    """Renders scan, analysis, build-log, tools, and rules results in a clear terminal format."""
+
+    def __init__(self, console: Optional[Console] = None) -> None:
+        enc = (getattr(sys.stdout, "encoding", "") or "").lower()
+        self.supports_unicode = "utf" in enc
+        if console:
+            self.console = console
+        else:
+            self.console = Console(
+                emoji=False,
+                safe_box=True,
+                legacy_windows=False,
+            )
+
+    @property
+    def icon_ok(self) -> str:
+        return "[green]✓[/green]" if self.supports_unicode else "[green]OK[/green]"
+
+    @property
+    def icon_warn(self) -> str:
+        return "[bold yellow]![/bold yellow]"
+
+    @property
+    def icon_err(self) -> str:
+        return "[bold red]X[/bold red]"
+
+    @property
+    def icon_info(self) -> str:
+        return "[bold blue]i[/bold blue]"
+
+    def report(self, result: ScanResult, verbose: bool = False) -> None:
+        """Print the complete human-readable report for repository scan."""
+        self.console.print("\n[bold cyan]DevWorkBench[/bold cyan]")
+        self.console.print("[dim]---------------------------------------------[/dim]")
+        self.console.print(f"Scanning: [bold]{result.target_path}[/bold]\n")
+
+        # Group detections by Technology
+        grouped_detections: Dict[Technology, List[FileDetection]] = defaultdict(list)
+        for det in result.detections:
+            grouped_detections[det.technology].append(det)
+
+        # Group diagnostics by Technology
+        path_to_tech: Dict[str, Technology] = {
+            det.relative_path: det.technology for det in result.detections
+        }
+        for hc in result.helm_charts:
+            path_to_tech[hc.relative_root] = Technology.HELM
+
+        grouped_diags: Dict[Technology, List[Diagnostic]] = defaultdict(list)
+        for diag in result.diagnostics:
+            tech = path_to_tech.get(diag.path)
+            if not tech:
+                for p_key, t_val in path_to_tech.items():
+                    if diag.path.startswith(p_key) or p_key in diag.path:
+                        tech = t_val
+                        break
+            if not tech:
+                src = diag.source.lower()
+                if "jenkins" in src:
+                    tech = Technology.JENKINS
+                elif "k8s" in src or "kubernetes" in src or "kube" in src:
+                    tech = Technology.KUBERNETES
+                elif "openshift" in src or "ocp" in src:
+                    tech = Technology.OPENSHIFT
+                elif "helm" in src:
+                    tech = Technology.HELM
+                elif "ruff" in src or "python" in src:
+                    tech = Technology.PYTHON
+                elif "yaml" in src:
+                    tech = Technology.YAML
+                elif "tf" in src or "terraform" in src or "tofu" in src:
+                    tech = Technology.TERRAFORM
+                elif "shell" in src:
+                    tech = Technology.SHELL
+                elif "hadolint" in src or "docker" in src:
+                    tech = Technology.DOCKERFILE
+                elif "actionlint" in src:
+                    tech = Technology.GITHUB_ACTIONS
+                elif "ansible" in src:
+                    tech = Technology.ANSIBLE
+                else:
+                    tech = Technology.UNKNOWN
+            grouped_diags[tech].append(diag)
+
+        tool_warn_by_tech: Dict[Technology, List[ToolWarning]] = defaultdict(list)
+        for tw in result.tool_warnings:
+            tool_warn_by_tech[tw.technology].append(tw)
+
+        tech_order = [
+            Technology.JENKINS,
+            Technology.KUBERNETES,
+            Technology.OPENSHIFT,
+            Technology.HELM,
+            Technology.PYTHON,
+            Technology.YAML,
+            Technology.TERRAFORM,
+            Technology.SHELL,
+            Technology.DOCKERFILE,
+            Technology.DOCKER_COMPOSE,
+            Technology.GITHUB_ACTIONS,
+            Technology.GITLAB_CI,
+            Technology.ANSIBLE,
+            Technology.AWS,
+            Technology.AZURE,
+            Technology.GCP,
+            Technology.JAVASCRIPT,
+            Technology.TYPESCRIPT,
+            Technology.JAVA,
+            Technology.SQL,
+            Technology.JSON,
+            Technology.XML,
+        ]
+
+        active_techs = set(grouped_detections.keys()) | set(grouped_diags.keys()) | set(tool_warn_by_tech.keys())
+
+        for tech in tech_order:
+            if tech not in active_techs:
+                continue
+
+            files = grouped_detections.get(tech, [])
+            diags = grouped_diags.get(tech, [])
+            t_warnings = tool_warn_by_tech.get(tech, [])
+
+            self.console.print(f"[bold yellow]{tech.value}[/bold yellow]")
+
+            if files:
+                self.console.print(f"  {self.icon_ok} {len(files)} file{'s' if len(files) != 1 else ''} analyzed")
+
+            if tech == Technology.HELM and result.helm_charts:
+                for chart in result.helm_charts:
+                    chart_tree = Tree(f"[bold cyan]{chart.relative_root}/[/bold cyan]")
+                    if chart.chart_yaml:
+                        chart_tree.add(f"[green]{Path(chart.chart_yaml).name}[/green]")
+                    for vf in chart.values_files:
+                        chart_tree.add(f"[green]{Path(vf).name}[/green]")
+                    if chart.template_files or chart.helper_files:
+                        tmpl_node = chart_tree.add("[bold]templates/[/bold]")
+                        for hf in chart.helper_files:
+                            tmpl_node.add(f"[green]{Path(hf).name}[/green]")
+                        for tf in chart.template_files:
+                            tmpl_node.add(f"[green]{Path(tf).name}[/green]")
+                    self.console.print(chart_tree)
+
+            for tw in t_warnings:
+                self.console.print(f"  {self.icon_warn} [bold yellow]{tw.tool_name} unavailable[/bold yellow]")
+                self.console.print(f"    [dim]{tw.install_hint}[/dim]")
+
+            for diag in diags:
+                loc_str = ""
+                if diag.line is not None:
+                    loc_str = f":{diag.line}"
+                    if diag.column is not None:
+                        loc_str += f":{diag.column}"
+
+                if diag.severity == DiagnosticSeverity.ERROR:
+                    icon = self.icon_err
+                elif diag.severity == DiagnosticSeverity.WARNING:
+                    icon = self.icon_warn
+                else:
+                    icon = self.icon_info
+
+                rule_str = f" [{diag.rule}]" if diag.rule else ""
+                cat_str = f" ({diag.category.value})" if diag.category else ""
+                self.console.print(f"  {icon} [bold]{diag.path}{loc_str}[/bold]{rule_str}{cat_str}")
+                self.console.print(f"    {diag.message}")
+                
+                # Provider Provenance & Lineage
+                prov_str = ""
+                if diag.provider:
+                    p_pri = f"P{diag.provider_priority}:" if diag.provider_priority else ""
+                    p_type = f"{diag.provider_type}" if diag.provider_type else ""
+                    p_badge = f"({p_pri}{p_type})" if (p_pri or p_type) else ""
+                    prov_str = f"source: {diag.provider} {p_badge}".strip()
+                else:
+                    prov_str = f"source: {diag.source}"
+                
+                if diag.rule_origin:
+                    prov_str += f" | {diag.rule_origin}"
+                self.console.print(f"    [dim]{prov_str}[/dim]")
+
+                if diag.contributing_sources:
+                    contrib_str = ", ".join(diag.contributing_sources)
+                    self.console.print(f"    [dim italic]Also detected by: {contrib_str}[/dim italic]")
+
+                doc_url = diag.documentation_url or diag.help_url
+                if doc_url:
+                    self.console.print(f"    [dim]Docs: {doc_url}[/dim]")
+
+            self.console.print()
+
+        # Cross-Tool Correlations
+        if result.correlations:
+            self.console.print("[bold cyan]Cross-Tool Correlations[/bold cyan]")
+            for corr in result.correlations:
+                chain_str = " -> ".join(corr.technology_chain)
+                self.console.print(f"  [bold magenta]{chain_str}[/bold magenta] (Confidence: {int(corr.confidence*100)}%)")
+                self.console.print(f"    {corr.explanation}")
+                if corr.root_cause_candidate:
+                    self.console.print(f"    [bold red]Root Cause:[/bold red] {corr.root_cause_candidate.title}")
+            self.console.print()
+
+        # Summary Footer
+        summary = result.summary
+        self.console.print("[dim]---------------------------------------------[/dim]")
+        self.console.print("[bold]Analysis Summary[/bold]")
+        self.console.print("[dim]---------------------------------------------[/dim]")
+        if summary.errors_count > 0:
+            self.console.print(f"Errors:            [bold red]{summary.errors_count}[/bold red]")
+        else:
+            self.console.print(f"Errors:            [green]0[/green]")
+
+        if summary.warnings_count > 0:
+            self.console.print(f"Warnings:          [bold yellow]{summary.warnings_count}[/bold yellow]")
+        else:
+            self.console.print(f"Warnings:          [green]0[/green]")
+
+        self.console.print(f"Files with issues: [bold]{summary.files_with_issues}[/bold]")
+        if summary.root_causes_count > 0:
+            self.console.print(f"Correlations:      [bold cyan]{summary.root_causes_count}[/bold cyan]")
+        self.console.print(f"Files discovered:  {summary.total_files_discovered}")
+        self.console.print(f"Scan duration:     [dim]{summary.duration_ms:.2f} ms[/dim]")
+        self.console.print("\n[bold green]No files modified.[/bold green]\n")
+
+    def report_build_log(self, report: BuildLogReport) -> None:
+        """Print the complete human-readable report for build log analysis."""
+        self.console.print("\n[bold cyan]DevWorkBench - Build Log Analysis[/bold cyan]")
+        self.console.print("[dim]---------------------------------------------[/dim]")
+        self.console.print(f"Log source: [bold]{report.source_path}[/bold] ({report.total_lines} lines analyzed)\n")
+
+        if report.root_causes:
+            self.console.print("[bold red]Root Cause Candidates[/bold red]")
+            for rc in report.root_causes:
+                self.console.print(f"  {self.icon_err} [bold red]{rc.title}[/bold red]")
+                self.console.print(f"    [bold]Status:[/bold] {rc.confidence}")
+                self.console.print(f"    [bold]Category:[/bold] {rc.category} | [bold]Source:[/bold] {rc.source}")
+                self.console.print(f"    [dim]{rc.description}[/dim]")
+
+                if rc.related_failures:
+                    self.console.print("    [bold yellow]Related / Cascaded Failures:[/bold yellow]")
+                    for rf in rc.related_failures:
+                        self.console.print(f"      [dim]-> {rf}[/dim]")
+                self.console.print()
+        else:
+            self.console.print("[bold green]No critical root-cause failure signatures detected in build log.[/bold green]\n")
+
+        if report.diagnostics:
+            self.console.print("[bold yellow]Detected Error & Warning Events[/bold yellow]")
+            for diag in report.diagnostics:
+                loc = f":{diag.line}" if diag.line else ""
+                self.console.print(f"  {self.icon_err} [bold]{diag.path}{loc}[/bold] [{diag.rule}]")
+                self.console.print(f"    {diag.message}")
+                self.console.print(f"    [dim]source: {diag.source} | category: {diag.category.value}[/dim]")
+            self.console.print()
+
+        self.console.print("[dim]---------------------------------------------[/dim]")
+        self.console.print(f"Total log lines:   [bold]{report.total_lines}[/bold]")
+        self.console.print(f"Error events:      [bold red]{len(report.diagnostics)}[/bold red]")
+        self.console.print(f"Root causes:       [bold cyan]{len(report.root_causes)}[/bold cyan]")
+        self.console.print(f"Analysis duration: [dim]{report.duration_ms:.2f} ms[/dim]")
+        self.console.print("\n[bold green]No files modified.[/bold green]\n")
+
+    def report_tools_dashboard(self, adapters: List[BaseAdapter]) -> None:
+        """Print dashboard of available vs missing analysis engines."""
+        self.console.print("\n[bold cyan]DevWorkBench - Analysis Engines Status[/bold cyan]")
+        self.console.print("[dim]---------------------------------------------[/dim]\n")
+
+        seen_names = set()
+        for adapter in adapters:
+            if adapter.name in seen_names:
+                continue
+            seen_names.add(adapter.name)
+
+            is_avail, warn = adapter.is_available()
+            if is_avail:
+                self.console.print(f"  {self.icon_ok} [bold green]{adapter.name:<25}[/bold green] [dim]({adapter.technology.value})[/dim]")
+            else:
+                self.console.print(f"  {self.icon_warn} [bold yellow]{adapter.name:<25}[/bold yellow] [dim]({adapter.technology.value})[/dim] - [italic]Unavailable[/italic]")
+                if warn:
+                    self.console.print(f"     [dim]{warn.install_hint}[/dim]")
+
+        self.console.print("\n[dim]---------------------------------------------[/dim]\n")
+
+    def report_capabilities_dashboard(self, results: Dict[Any, Any]) -> None:
+        """Print dashboard of capabilities, priority selection, and provider availability."""
+        self.console.print("\n[bold cyan]DevWorkBench - Capability Providers & Hierarchy[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        for cap, res in results.items():
+            cap_name = cap.value if hasattr(cap, "value") else str(cap)
+            selected = res.selected_provider
+            p_val = int(res.priority)
+            p_name = res.priority.name if hasattr(res.priority, "name") else str(res.priority)
+
+            if res.status == "available" and selected:
+                status_icon = self.icon_ok
+                status_color = "green"
+                ver_str = f" v{selected.version}" if selected.version else ""
+                cmd_str = f" [cyan]`{selected.real_command}`[/cyan]" if selected.real_command else ""
+                provider_desc = f"[bold green]{selected.name}[/bold green]{ver_str}{cmd_str} ([dim]{selected.source} | {selected.license}[/dim])"
+            elif res.status == "configured_unavailable":
+                status_icon = self.icon_err
+                status_color = "red"
+                provider_desc = f"[bold red]Configured Unavailable[/bold red] - [dim]{res.message}[/dim]"
+            else:
+                status_icon = self.icon_warn
+                status_color = "yellow"
+                provider_desc = f"[bold yellow]Manual Review Required[/bold yellow] - [dim]No automated provider[/dim]"
+
+            priority_badge = f"[bold {status_color}]P{p_val}:{p_name}[/bold {status_color}]"
+            self.console.print(f"  {status_icon} [bold cyan]{cap_name:<30}[/bold cyan] {priority_badge:<25} {provider_desc}")
+            if res.reason:
+                self.console.print(f"     [dim]Reason: {res.reason}[/dim]")
+            if res.fallback_provider:
+                self.console.print(f"     [dim]Fallback: {res.fallback_provider}[/dim]")
+
+        self.console.print("\n[dim]Hierarchy: 1=Native Ecosystem | 2=Open-Source Library | 3=DevWorkBench Logic | 4=Manual Review[/dim]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_setup_results(self, report: Any) -> None:
+        """Print the dependency installation and setup summary report."""
+        self.console.print("\n[bold cyan]DevWorkBench - Dependency & Tool Setup[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        if report.successful:
+            self.console.print("[bold green]Installed & Verified Successfully:[/bold green]")
+            for r in report.successful:
+                ver = f" (v{r.version})" if r.version else ""
+                self.console.print(f"  {self.icon_ok} [bold green]{r.tool_name}[/bold green]{ver} [dim]({r.technology.value})[/dim]: {r.message}")
+            self.console.print()
+
+        if report.already_available:
+            self.console.print("[bold cyan]Already Installed & Verified:[/bold cyan]")
+            for r in report.already_available:
+                ver = f" (v{r.version})" if r.version else ""
+                self.console.print(f"  {self.icon_ok} [cyan]{r.tool_name}[/cyan]{ver} [dim]({r.technology.value})[/dim]")
+            self.console.print()
+
+        if report.failed:
+            self.console.print("[bold red]Installation Failed (Safe Fallbacks Active):[/bold red]")
+            for r in report.failed:
+                err_code = f" [{r.error_kind.value}]" if r.error_kind else ""
+                self.console.print(f"  {self.icon_err} [bold red]{r.tool_name}[/bold red]{err_code} [dim]({r.technology.value})[/dim]")
+                self.console.print(f"     [dim]{r.message}[/dim]")
+                if r.fallback_provider:
+                    self.console.print(f"     [yellow]→ Fallback provider: {r.fallback_provider}[/yellow]")
+            self.console.print()
+
+        if report.skipped:
+            self.console.print("[bold yellow]Manual Setup / Skipped:[/bold yellow]")
+            for r in report.skipped:
+                self.console.print(f"  {self.icon_warn} [yellow]{r.tool_name}[/yellow] [dim]({r.technology.value})[/dim]: {r.message}")
+            self.console.print()
+
+        if report.fallbacks:
+            self.console.print("[bold]Active Fallback Summary:[/bold]")
+            for fb in report.fallbacks:
+                self.console.print(f"  → [yellow]{fb['tool']}[/yellow] ({fb['technology']}) → [bold]{fb['fallback']}[/bold] [dim](Reason: {fb['reason']})[/dim]")
+            self.console.print()
+
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_doctor_dashboard(self, diagnostic: Any) -> None:
+        """Print the environment diagnostic health dashboard."""
+        self.console.print("\n[bold cyan]DevWorkBench - Environment Doctor & Health Diagnostics[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        self.console.print("[bold]System Information:[/bold]")
+        self.console.print(f"  DevWorkBench: [bold green]v{diagnostic.devworkbench_version}[/bold green]")
+        self.console.print(f"  Python:       [bold]{diagnostic.python_version}[/bold] ({diagnostic.platform_name} {diagnostic.platform_release} {diagnostic.architecture})")
+        self.console.print(f"  Executable:   [dim]{diagnostic.python_executable}[/dim]\n")
+
+        self.console.print("[bold]Core Python Runtime Dependencies:[/bold]")
+        for dep in diagnostic.core_dependencies:
+            icon = self.icon_ok if dep.available else self.icon_err
+            status_style = "green" if dep.available else "red"
+            ver_str = f" v{dep.version}" if dep.version else ""
+            self.console.print(f"  {icon} [{status_style}]{dep.name}[/{status_style}]{ver_str}")
+        self.console.print()
+
+        self.console.print("[bold]External Tools & Engines Status:[/bold]")
+        for tool in diagnostic.external_tools:
+            if tool.available:
+                ver_str = f" v{tool.version}" if tool.version else ""
+                self.console.print(f"  {self.icon_ok} [bold green]{tool.name:<22}[/bold green]{ver_str:<18} [dim]({tool.source} | {tool.license})[/dim]")
+            else:
+                self.console.print(f"  {self.icon_warn} [bold yellow]{tool.name:<22}[/bold yellow] [dim]Unavailable locally[/dim]")
+                if tool.install_hint:
+                    self.console.print(f"     [dim]{tool.install_hint}[/dim]")
+        self.console.print()
+
+        self.console.print("[bold]Capability Priority Resolution:[/bold]")
+        cap = diagnostic.capability_summary
+        self.console.print(f"  Total Capabilities:       [bold]{cap.get('total_capabilities', 0)}[/bold]")
+        self.console.print(f"  Native Ecosystem (P1):    [bold green]{cap.get('native_active', 0)}[/bold green]")
+        self.console.print(f"  Open-Source Library (P2): [bold green]{cap.get('opensource_active', 0)}[/bold green]")
+        self.console.print(f"  DevWorkBench Logic (P3):  [bold cyan]{cap.get('devworkbench_active', 0)}[/bold cyan]")
+        self.console.print(f"  Manual Review (P4):       [bold yellow]{cap.get('manual_review_required', 0)}[/bold yellow]\n")
+
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_rules_catalog(self, rules: List[BaseRule], technology_filter: Optional[str] = None) -> None:
+        """Print catalog of all built-in DevOps best-practice rules."""
+        self.console.print("\n[bold cyan]DevWorkBench - DevOps Best-Practice Rules[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        for rule in rules:
+            meta = rule.metadata
+            if technology_filter and meta.technology.value.lower() != technology_filter.lower():
+                continue
+
+            sev_color = "red" if meta.severity == DiagnosticSeverity.ERROR else "yellow"
+            p_badge = f"[P{meta.provider_priority}:{meta.provider}]"
+            self.console.print(f"  [bold cyan]{meta.rule_id:<14}[/bold cyan] [{sev_color}]{meta.severity.value.upper():<7}[/{sev_color}] [bold]{meta.technology.value:<14}[/bold] [dim]{meta.category.value:<14}[/dim] [dim]{p_badge}[/dim]")
+            self.console.print(f"    [bold]Description:[/bold] {meta.description}")
+            if meta.rationale:
+                self.console.print(f"    [dim]Rationale:   {meta.rationale}[/dim]")
+            
+            safety_val = meta.fix_safety.value if hasattr(meta.fix_safety, "value") else str(meta.fix_safety)
+            autofix_str = "Yes" if meta.autofix_supported else "No"
+            self.console.print(f"    [dim]Fix Safety:  {safety_val} (Autofix: {autofix_str})[/dim]")
+
+            if meta.false_positive_notes:
+                self.console.print(f"    [dim]False Positives: {meta.false_positive_notes}[/dim]")
+
+            doc_url = meta.documentation_url or meta.help_url
+            if doc_url:
+                self.console.print(f"    [dim]Docs:        {doc_url}[/dim]")
+            self.console.print()
+
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_fix_plan(self, plan: FixPlan, dry_run: bool = False) -> None:
+        """Print the human-readable fix plan before execution."""
+        title = "DevWorkBench - Fix (Dry Run)" if dry_run else "DevWorkBench Fix"
+        self.console.print(f"\n[bold cyan]{title}[/bold cyan]")
+        self.console.print("[dim]---------------------------------------------[/dim]\n")
+
+        self.console.print(f"Files to modify:       [bold]{len(plan.files_to_modify)}[/bold]")
+        self.console.print(f"Safe fixes available:  [bold green]{len(plan.safe_candidates)}[/bold green]")
+        self.console.print(f"Manual fixes:          [bold yellow]{len(plan.manual_candidates)}[/bold yellow]")
+        if plan.conflicts:
+            self.console.print(f"Conflicts detected:    [bold red]{len(plan.conflicts)}[/bold red]")
+        self.console.print()
+
+        if plan.safe_candidates:
+            self.console.print("[bold]Planned changes:[/bold]\n")
+            # Group by file
+            by_file: Dict[str, List[FixCandidate]] = {}
+            for c in plan.safe_candidates:
+                if c.path not in by_file:
+                    by_file[c.path] = []
+                by_file[c.path].append(c)
+
+            for path_str, candidates in by_file.items():
+                self.console.print(f"[bold cyan]{path_str}[/bold cyan]")
+                for c in candidates:
+                    rule_str = f"[{c.rule}] " if c.rule else ""
+                    line_str = f":{c.line}" if c.line else ""
+                    self.console.print(f"  {self.icon_ok} {rule_str}{c.description}{line_str}")
+                    self.console.print(f"    [dim]Engine: {c.source} | Safety: {c.fix_safety.value}[/dim]")
+                self.console.print()
+
+        if plan.conflicts:
+            self.console.print("[bold red]Conflicting automatic fixes:[/bold red]\n")
+            for conf in plan.conflicts:
+                self.console.print(f"  {self.icon_warn} [bold]{conf.path}[/bold]")
+                self.console.print(f"    [dim]{conf.reason}[/dim]")
+                self.console.print(f"    [italic]Automatic modification skipped. Manual review required.[/italic]\n")
+
+        if dry_run:
+            self.console.print("[dim]---------------------------------------------[/dim]")
+            self.console.print("[bold green]No files modified.[/bold green]\n")
+
+    def report_fix_results(self, report: FixReport) -> None:
+        """Print the human-readable post-fix validation report."""
+        self.console.print("\n[bold cyan]DevWorkBench Fix[/bold cyan]")
+        self.console.print("[dim]---------------------------------------------[/dim]\n")
+
+        sum_data = report.summary
+        self.console.print("[bold]Before:[/bold]")
+        self.console.print(f"  Errors:   {sum_data.before_errors}")
+        self.console.print(f"  Warnings: {sum_data.before_warnings}\n")
+
+        self.console.print("[bold]Applied:[/bold]")
+        if sum_data.applied_count > 0:
+            self.console.print(f"  {self.icon_ok} [bold green]{sum_data.applied_count} fixes applied[/bold green]")
+        else:
+            self.console.print(f"  [dim]0 fixes applied[/dim]")
+
+        if sum_data.failed_count > 0:
+            self.console.print(f"  {self.icon_err} [bold red]{sum_data.failed_count} fixes failed[/bold red]")
+            for r in report.results:
+                if r.status == "failed":
+                    self.console.print(f"    [red]{r.path}[/red]: {r.message}")
+
+        if sum_data.skipped_count > 0:
+            self.console.print(f"  {self.icon_warn} [bold yellow]{sum_data.skipped_count} fixes skipped[/bold yellow]")
+            for r in report.results:
+                if r.status == "skipped":
+                    self.console.print(f"    [yellow]{r.path}[/yellow]: {r.message}")
+        self.console.print()
+
+        self.console.print("[bold]Validation:[/bold]")
+        self.console.print(f"  {self.icon_ok} [bold green]{sum_data.resolved_count} issues resolved[/bold green]")
+        if sum_data.remaining_count > 0:
+            self.console.print(f"  {self.icon_warn} [bold yellow]{sum_data.remaining_count} issues remain[/bold yellow]")
+        else:
+            self.console.print(f"  [bold green]0 issues remain[/bold green]")
+        self.console.print()
+
+        self.console.print("[bold]After:[/bold]")
+        self.console.print(f"  Errors:         {sum_data.after_errors}")
+        self.console.print(f"  Warnings:       {sum_data.after_warnings}")
+        self.console.print(f"  Files modified: [bold]{sum_data.files_modified}[/bold]")
+        self.console.print(f"  Duration:       [dim]{sum_data.duration_ms:.2f} ms[/dim]\n")
+        self.console.print("[dim]---------------------------------------------[/dim]\n")
+
+
+class JsonReporter:
+    """Serializes scan and build log results into formatted, stable JSON output."""
+
+    @classmethod
+    def format(cls, result: Any, indent: int = 2) -> str:
+        """Return JSON string representation."""
+        if hasattr(result, "to_dict"):
+            return json.dumps(result.to_dict(), indent=indent)
+        return json.dumps(result, indent=indent)
+
+    @classmethod
+    def write_to_file(cls, result: Any, file_path: str, indent: int = 2) -> None:
+        """Write JSON output to a file."""
+        content = cls.format(result, indent=indent)
+        Path(file_path).write_text(content, encoding="utf-8")

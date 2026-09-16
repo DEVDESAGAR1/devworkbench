@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: broken-cm
+data:
+  key: [unclosed list
+    subitem: value

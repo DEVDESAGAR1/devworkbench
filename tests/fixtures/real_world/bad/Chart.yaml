@@ -1,0 +1,4 @@
+apiVersion: v2
+name: broken-chart
+# missing version
+description: A chart without a version field

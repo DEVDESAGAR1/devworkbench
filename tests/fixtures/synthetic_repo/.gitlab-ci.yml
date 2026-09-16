@@ -1,0 +1,14 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    - echo "Building binaries..."
+
+test_job:
+  stage: test
+  script:
+    - echo "Running unit tests..."

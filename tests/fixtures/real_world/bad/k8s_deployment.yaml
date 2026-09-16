@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unconfigured-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unconfigured-api
+  template:
+    metadata:
+      labels:
+        app: unconfigured-api
+    spec:
+      containers:
+      - name: api
+        image: custom-api:latest

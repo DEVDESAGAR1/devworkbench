@@ -1,0 +1,19 @@
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on agent-linux-prod in /home/jenkins/workspace/payment-api
+[Pipeline] {
+[Pipeline] stage: Checkout
+Checking out git@github.com:org/payment-api.git
+[Pipeline] stage: Build Container
+Building Docker image with Kaniko...
+Pushing image to registry.internal.corp:5000/payments/api:1.0.0
+Error: unauthorized: authentication required
+The push refers to repository [registry.internal.corp:5000/payments/api]
+ERROR: script returned exit code 1
+[Pipeline] } // stage
+[Pipeline] stage: Deploy
+Stage "Deploy" skipped due to earlier failure
+[Pipeline] } // node
+[Pipeline] End of Pipeline
+ERROR: script returned exit code 1
+Finished: FAILURE
