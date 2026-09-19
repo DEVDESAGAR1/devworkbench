@@ -13,6 +13,8 @@ from devworkbench.deduplication import DiagnosticDeduplicator
 from devworkbench.detector import DetectionEngine
 from devworkbench.fixes import FixEngine
 from devworkbench.models import (
+    CheckCoverage,
+    CommandExecution,
     Diagnostic,
     DiagnosticSeverity,
     FileDetection,
@@ -314,6 +316,10 @@ class Scanner:
 
         seen_paths: Set[str] = set()
 
+        # Clear executions on all adapters before scan
+        for adapter in self.adapter_registry.adapters:
+            adapter.clear_executions()
+
         for p_str in target_paths:
             path_obj = Path(p_str)
             if not path_obj.exists():
@@ -347,7 +353,27 @@ class Scanner:
         active_technologies = {d.technology for d in all_detections}
         tool_warnings = self.adapter_registry.get_tool_warnings(active_technologies)
 
-        # 4. Run correlation engine
+        # 4. Collect all command executions
+        all_executions = []
+        for adapter in self.adapter_registry.adapters:
+            all_executions.extend(adapter.get_executions())
+
+        checks_passed = sum(1 for e in all_executions if e.status == "PASS")
+        checks_failed = sum(1 for e in all_executions if e.status == "FAIL")
+        checks_unavailable = sum(1 for e in all_executions if e.status == "UNAVAILABLE") + len(tool_warnings)
+        checks_skipped = sum(1 for e in all_executions if e.status == "SKIPPED")
+        checks_degraded = sum(1 for e in all_executions if e.status == "DEGRADED")
+        manual_review_count = sum(1 for d in final_diagnostics if d.provider_type == "manual" or d.fix_safety == "REVIEW_REQUIRED")
+
+        # Determine coverage rating
+        if checks_degraded > 0 or (checks_unavailable > 0 and checks_passed == 0 and len(all_detections) > 0):
+            coverage = CheckCoverage.DEGRADED
+        elif checks_unavailable > 0 or manual_review_count > 0:
+            coverage = CheckCoverage.PARTIAL
+        else:
+            coverage = CheckCoverage.FULL
+
+        # 5. Run correlation engine
         correlations = CorrelationEngine.correlate(
             detections=all_detections,
             diagnostics=final_diagnostics,
@@ -375,6 +401,13 @@ class Scanner:
             root_causes_count=len(correlations),
             duration_ms=round(duration_ms, 2),
             modified_files=0,  # Strict immutability
+            coverage=coverage,
+            checks_passed=checks_passed,
+            checks_failed=checks_failed,
+            checks_unavailable=checks_unavailable,
+            checks_skipped=checks_skipped,
+            checks_degraded=checks_degraded,
+            manual_review_count=manual_review_count,
         )
 
         display_path = ", ".join(target_paths) if len(target_paths) > 1 else target_paths[0]
@@ -388,6 +421,7 @@ class Scanner:
             tool_warnings=tool_warnings,
             unknown_files=all_unknown_files,
             errors=all_errors,
+            executions=all_executions,
             summary=summary,
         )
 

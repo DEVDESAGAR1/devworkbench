@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
+from devworkbench.execution import CommandRunner
 from devworkbench.models import (
     Diagnostic,
     DiagnosticCategory,
@@ -57,39 +58,41 @@ class TerraformAdapter(BaseAdapter):
         rel_path = detection.relative_path
 
         # 1. Format Check (Strictly check-only, never modifies files)
-        try:
-            fmt_proc = subprocess.run(
-                [tf_bin, "fmt", "-check", "-no-color", str(file_path)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=10,
-            )
-            # Exit code 3 or 1 indicates formatting differences
-            if fmt_proc.returncode != 0:
-                diagnostics.append(
-                    Diagnostic(
-                        path=rel_path,
-                        severity=DiagnosticSeverity.INFO,
-                        rule="terraform-fmt",
-                        message="File is not properly formatted according to standard Terraform style",
-                        source=Path(tf_bin).name,
-                        category=DiagnosticCategory.FORMAT,
-                        fix_available=True,
-                        fix_kind=FixKind.NATIVE_ENGINE,
-                        fix_source=Path(tf_bin).name,
-                        fix_safety=FixSafety.SAFE,
-                        fix_description="Terraform fmt standard formatting",
-                        provider=Path(tf_bin).name,
-                        provider_priority=1,
-                        provider_type="native",
-                        rule_origin=f"Native CLI: {Path(tf_bin).name} fmt",
-                        documentation_url="https://developer.hashicorp.com/terraform/cli/commands/fmt",
-                    )
+        bin_name = Path(tf_bin).name
+        exec_res = CommandRunner.run_command(
+            executable=tf_bin,
+            args=["fmt", "-check", "-no-color", str(file_path)],
+            technology="Terraform",
+            capability="terraform_format",
+            provider_type="native",
+            provider_name=bin_name,
+            cwd=file_path.parent,
+            timeout_seconds=10.0,
+        )
+        self.record_execution(exec_res)
+
+        # Exit code 3 or 1 indicates formatting differences
+        if exec_res.exit_code != 0 and exec_res.status != "UNAVAILABLE":
+            diagnostics.append(
+                Diagnostic(
+                    path=rel_path,
+                    severity=DiagnosticSeverity.INFO,
+                    rule="terraform-fmt",
+                    message="File is not properly formatted according to standard Terraform style",
+                    source=bin_name,
+                    category=DiagnosticCategory.FORMAT,
+                    fix_available=True,
+                    fix_kind=FixKind.NATIVE_ENGINE,
+                    fix_source=bin_name,
+                    fix_safety=FixSafety.SAFE,
+                    fix_description="Terraform fmt standard formatting",
+                    provider=bin_name,
+                    provider_priority=1,
+                    provider_type="native",
+                    rule_origin=f"Native CLI: {bin_name} fmt",
+                    documentation_url="https://developer.hashicorp.com/terraform/cli/commands/fmt",
                 )
-        except Exception:
-            pass
+            )
 
         return diagnostics
 

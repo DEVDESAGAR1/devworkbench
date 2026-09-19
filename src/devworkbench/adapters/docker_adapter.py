@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
+from devworkbench.execution import CommandRunner
 from devworkbench.models import (
     Diagnostic,
     DiagnosticCategory,
@@ -45,50 +46,51 @@ class DockerAdapter(BaseAdapter):
 
         rel_path = detection.relative_path
 
-        try:
-            proc = subprocess.run(
-                ["hadolint", "-f", "json", str(file_path)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=10,
-            )
-            if proc.stdout.strip():
-                try:
-                    items = json.loads(proc.stdout)
-                    for item in items:
-                        level_str = item.get("level", "warning").lower()
-                        if level_str == "error":
-                            sev = DiagnosticSeverity.ERROR
-                        elif level_str == "warning":
-                            sev = DiagnosticSeverity.WARNING
-                        elif level_str == "info":
-                            sev = DiagnosticSeverity.INFO
-                        else:
-                            sev = DiagnosticSeverity.HINT
+        exec_res = CommandRunner.run_command(
+            executable="hadolint",
+            args=["-f", "json", str(file_path)],
+            technology="Dockerfile",
+            capability="dockerfile_lint",
+            provider_type="native",
+            provider_name="hadolint",
+            cwd=file_path.parent,
+            timeout_seconds=10.0,
+        )
+        self.record_execution(exec_res)
 
-                        code = item.get("code")
-                        diagnostics.append(
-                            Diagnostic(
-                                path=rel_path,
-                                line=item.get("line"),
-                                column=item.get("column"),
-                                severity=sev,
-                                rule=code,
-                                message=item.get("message", "Dockerfile lint issue"),
-                                source="hadolint",
-                                category=DiagnosticCategory.LINT,
-                                provider="hadolint",
-                                provider_priority=1,
-                                provider_type="native",
-                                rule_origin="Native CLI: hadolint",
-                                documentation_url=f"https://github.com/hadolint/hadolint/wiki/{code}" if code else "https://github.com/hadolint/hadolint",
-                            )
+        if exec_res.stdout.strip():
+            try:
+                items = json.loads(exec_res.stdout)
+                for item in items:
+                    level_str = item.get("level", "warning").lower()
+                    if level_str == "error":
+                        sev = DiagnosticSeverity.ERROR
+                    elif level_str == "warning":
+                        sev = DiagnosticSeverity.WARNING
+                    elif level_str == "info":
+                        sev = DiagnosticSeverity.INFO
+                    else:
+                        sev = DiagnosticSeverity.HINT
+
+                    code = item.get("code")
+                    diagnostics.append(
+                        Diagnostic(
+                            path=rel_path,
+                            line=item.get("line"),
+                            column=item.get("column"),
+                            severity=sev,
+                            rule=code,
+                            message=item.get("message", "Dockerfile lint issue"),
+                            source="hadolint",
+                            category=DiagnosticCategory.LINT,
+                            provider="hadolint",
+                            provider_priority=1,
+                            provider_type="native",
+                            rule_origin="Native CLI: hadolint",
+                            documentation_url=f"https://github.com/hadolint/hadolint/wiki/{code}" if code else "https://github.com/hadolint/hadolint",
                         )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    )
+            except Exception:
+                pass
 
         return diagnostics

@@ -13,6 +13,9 @@ from rich.tree import Tree
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.models import (
     BuildLogReport,
+    CleanupResult,
+    ConversionPlan,
+    ConversionResult,
     Diagnostic,
     DiagnosticSeverity,
     FileDetection,
@@ -229,6 +232,18 @@ class HumanReporter:
                     self.console.print(f"    [bold red]Root Cause:[/bold red] {corr.root_cause_candidate.title}")
             self.console.print()
 
+        # Executions (verbose or when errors occur)
+        if verbose and result.executions:
+            self.console.print("[bold cyan]Execution Details & Transparency[/bold cyan]")
+            for ex in result.executions:
+                st_icon = self.icon_ok if ex.status == "PASS" else (self.icon_warn if ex.status == "UNAVAILABLE" else self.icon_err)
+                v_str = f" v{ex.tool_version}" if ex.tool_version else ""
+                self.console.print(f"  {st_icon} [bold]{ex.technology}[/bold] / {ex.capability} -> [cyan]{ex.provider_name}[/cyan]{v_str} [dim]({ex.duration_ms:.1f}ms, exit={ex.exit_code})[/dim]")
+                self.console.print(f"    [dim]cmd: {ex.command}[/dim]")
+                if ex.unavailable_reason:
+                    self.console.print(f"    [dim yellow]reason: {ex.unavailable_reason}[/dim yellow]")
+            self.console.print()
+
         # Summary Footer
         summary = result.summary
         self.console.print("[dim]---------------------------------------------[/dim]")
@@ -248,8 +263,102 @@ class HumanReporter:
         if summary.root_causes_count > 0:
             self.console.print(f"Correlations:      [bold cyan]{summary.root_causes_count}[/bold cyan]")
         self.console.print(f"Files discovered:  {summary.total_files_discovered}")
+        
+        cov_val = summary.coverage.value if hasattr(summary.coverage, "value") else str(summary.coverage)
+        cov_color = "green" if cov_val == "FULL" else ("yellow" if cov_val == "PARTIAL" else "red")
+        self.console.print(f"Tool Coverage:     [bold {cov_color}]{cov_val}[/bold {cov_color}] (Passed: {summary.checks_passed}, Failed: {summary.checks_failed}, Unavailable: {summary.checks_unavailable})")
         self.console.print(f"Scan duration:     [dim]{summary.duration_ms:.2f} ms[/dim]")
         self.console.print("\n[bold green]No files modified.[/bold green]\n")
+
+    def report_cleanup_result(self, result: CleanupResult, format_mode: str = "human") -> None:
+        """Print the result of manifest cleanup."""
+        if format_mode == "diff":
+            if result.diff:
+                self.console.print(result.diff)
+            else:
+                self.console.print("[dim]Manifest is already clean. No changes.[/dim]")
+            return
+
+        if format_mode == "yaml":
+            self.console.print(result.cleaned_yaml)
+            return
+
+        self.console.print("\n[bold cyan]DevWorkBench - Kubernetes Manifest Cleaner[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]")
+        self.console.print(f"Target: [bold]{result.source_path}[/bold] (Engine: [green]{result.engine_used}[/green])\n")
+
+        if result.fields_removed:
+            self.console.print("[bold yellow]Removed Runtime Metadata & Status:[/bold yellow]")
+            for f in result.fields_removed:
+                self.console.print(f"  {self.icon_ok} [dim]{f}[/dim]")
+            self.console.print()
+
+        if result.diff:
+            self.console.print("[bold]Diff Preview:[/bold]")
+            self.console.print(f"[dim]{result.diff}[/dim]")
+        else:
+            self.console.print("[bold green]Manifest was already clean. No fields removed.[/bold green]\n")
+
+        if result.written and result.output_path:
+            self.console.print(f"[bold green]Cleaned manifest written to:[/bold green] [bold cyan]{result.output_path}[/bold cyan]\n")
+        elif not result.written:
+            self.console.print("[bold green]No files modified.[/bold green] (Use [cyan]--write[/cyan] or [cyan]--output[/cyan] to save changes)\n")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_conversion_plan(self, plan: ConversionPlan) -> None:
+        """Print the Kubernetes-to-Helm conversion plan."""
+        self.console.print("\n[bold cyan]DevWorkBench - Kubernetes to Helm Conversion Plan[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]")
+        self.console.print(f"Target Chart:  [bold green]{plan.target_chart_name}[/bold green]")
+        self.console.print(f"Destination:   [bold]{plan.target_dir}[/bold]")
+        exist_color = "yellow" if plan.existing_chart_detected else "green"
+        exist_text = "Yes (non-destructive merge mode)" if plan.existing_chart_detected else "No (new chart creation)"
+        self.console.print(f"Chart Exists:  [bold {exist_color}]{exist_text}[/bold {exist_color}]\n")
+
+        self.console.print("[bold]Planned Resource Actions:[/bold]")
+        for item in plan.resource_items:
+            action_color = "green" if item.action.value == "CREATE" else ("yellow" if item.action.value == "UPDATE" else "cyan")
+            self.console.print(f"  [{action_color}][{item.action.value}][/{action_color}] [bold]{item.kind}/{item.name}[/bold] -> [cyan]{item.target_file}[/cyan]")
+            self.console.print(f"     [dim]{item.reason}[/dim]")
+        self.console.print("\n[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_conversion_results(self, result: ConversionResult) -> None:
+        """Print the Kubernetes-to-Helm conversion completion report."""
+        self.console.print("\n[bold cyan]DevWorkBench - Kubernetes to Helm Conversion Result[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]")
+        self.console.print(f"Chart Name:    [bold green]{result.chart_name}[/bold green]")
+        self.console.print(f"Chart Dir:     [bold]{result.target_dir}[/bold]\n")
+
+        if result.created_files:
+            self.console.print("[bold green]Created Files:[/bold green]")
+            for cf in result.created_files:
+                self.console.print(f"  {self.icon_ok} [green]{cf}[/green]")
+            self.console.print()
+
+        if result.updated_files:
+            self.console.print("[bold yellow]Updated / Merged Files:[/bold yellow]")
+            for uf in result.updated_files:
+                self.console.print(f"  {self.icon_warn} [yellow]{uf}[/yellow]")
+            self.console.print()
+
+        if result.kept_files:
+            self.console.print("[bold cyan]Preserved Existing Files:[/bold cyan]")
+            for kf in result.kept_files:
+                self.console.print(f"  {self.icon_ok} [dim]{kf}[/dim]")
+            self.console.print()
+
+        if result.validation_diagnostics:
+            self.console.print("[bold yellow]Post-Conversion Validation Diagnostics:[/bold yellow]")
+            for vd in result.validation_diagnostics:
+                loc = f":{vd.line}" if vd.line else ""
+                self.console.print(f"  {self.icon_warn} [bold]{vd.path}{loc}[/bold] [{vd.rule}]")
+                self.console.print(f"    {vd.message}")
+            self.console.print()
+        else:
+            self.console.print("[bold green]Post-conversion validation passed with 0 issues.[/bold green]\n")
+
+        self.console.print(f"Duration: [dim]{result.duration_ms:.2f} ms[/dim]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
 
     def report_build_log(self, report: BuildLogReport) -> None:
         """Print the complete human-readable report for build log analysis."""

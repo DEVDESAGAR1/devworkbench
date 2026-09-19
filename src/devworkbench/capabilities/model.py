@@ -50,6 +50,7 @@ class CapabilityType(str, Enum):
     KUBERNETES_SCHEMA_VALIDATION = "kubernetes_schema_validation"
     KUBERNETES_LINT = "kubernetes_lint"
     KUBERNETES_TO_HELM = "kubernetes_to_helm"
+    KUBERNETES_CLEANUP = "kubernetes_cleanup"
     OPENSHIFT_VALIDATION = "openshift_validation"
 
     # Ansible & CI/CD

@@ -10,7 +10,9 @@ from typing import List, Optional, Tuple
 import yaml
 
 from devworkbench.adapters.base import BaseAdapter
+from devworkbench.execution import CommandRunner
 from devworkbench.models import (
+    CommandExecution,
     Diagnostic,
     DiagnosticCategory,
     DiagnosticSeverity,
@@ -62,7 +64,7 @@ class YamlAdapter(BaseAdapter):
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=5,
+                timeout=3,
             )
             if res.returncode == 0:
                 return (sys.executable, "-m", "yamllint")
@@ -99,7 +101,36 @@ class YamlAdapter(BaseAdapter):
         try:
             # Load all documents in multi-doc YAML files (e.g. Kubernetes manifests)
             list(yaml.safe_load_all(content))
+            self.record_execution(
+                CommandExecution(
+                    technology="YAML",
+                    capability="yaml_parsing",
+                    provider_type="opensource",
+                    provider_name="pyyaml",
+                    executable="yaml.safe_load_all",
+                    args=[str(file_path)],
+                    command=f"yaml.safe_load_all({rel_path})",
+                    cwd=str(file_path.parent),
+                    exit_code=0,
+                    status="PASS",
+                )
+            )
         except yaml.MarkedYAMLError as e:
+            self.record_execution(
+                CommandExecution(
+                    technology="YAML",
+                    capability="yaml_parsing",
+                    provider_type="opensource",
+                    provider_name="pyyaml",
+                    executable="yaml.safe_load_all",
+                    args=[str(file_path)],
+                    command=f"yaml.safe_load_all({rel_path})",
+                    cwd=str(file_path.parent),
+                    exit_code=1,
+                    status="FAIL",
+                    error_message=str(e),
+                )
+            )
             line = None
             col = None
             if e.problem_mark:
@@ -133,6 +164,21 @@ class YamlAdapter(BaseAdapter):
             )
             return diagnostics
         except yaml.YAMLError as e:
+            self.record_execution(
+                CommandExecution(
+                    technology="YAML",
+                    capability="yaml_parsing",
+                    provider_type="opensource",
+                    provider_name="pyyaml",
+                    executable="yaml.safe_load_all",
+                    args=[str(file_path)],
+                    command=f"yaml.safe_load_all({rel_path})",
+                    cwd=str(file_path.parent),
+                    exit_code=1,
+                    status="FAIL",
+                    error_message=str(e),
+                )
+            )
             diagnostics.append(
                 Diagnostic(
                     path=rel_path,
@@ -153,61 +199,63 @@ class YamlAdapter(BaseAdapter):
         # 2. Linting via Yamllint if available
         yamllint_cmd = self._get_yamllint_cmd()
         if yamllint_cmd:
-            try:
-                proc = subprocess.run(
-                    list(yamllint_cmd) + ["-f", "parsable", str(file_path)],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=10,
-                )
-                # Parsable output: filename:line:col: [level] message (rule)
-                for line_str in proc.stdout.splitlines():
-                    line_str = line_str.strip()
-                    if not line_str or ":" not in line_str:
-                        continue
-                    parts = line_str.split(":", 3)
-                    if len(parts) >= 4:
-                        try:
-                            l_num = int(parts[1])
-                            c_num = int(parts[2])
-                        except ValueError:
-                            l_num, c_num = None, None
+            cmd_list = list(yamllint_cmd)
+            exec_res = CommandRunner.run_command(
+                executable=cmd_list[0],
+                args=cmd_list[1:] + ["-f", "parsable", str(file_path)],
+                technology="YAML",
+                capability="yaml_lint",
+                provider_type="opensource",
+                provider_name="yamllint",
+                cwd=file_path.parent,
+                timeout_seconds=10.0,
+            )
+            self.record_execution(exec_res)
 
-                        rest = parts[3].strip()
-                        severity = DiagnosticSeverity.WARNING
-                        if rest.startswith("[error]"):
-                            severity = DiagnosticSeverity.ERROR
-                            rest = rest.replace("[error]", "").strip()
-                        elif rest.startswith("[warning]"):
-                            rest = rest.replace("[warning]", "").strip()
+            # Parsable output: filename:line:col: [level] message (rule)
+            for line_str in exec_res.stdout.splitlines():
+                line_str = line_str.strip()
+                if not line_str or ":" not in line_str:
+                    continue
+                parts = line_str.split(":", 3)
+                if len(parts) >= 4:
+                    try:
+                        l_num = int(parts[1])
+                        c_num = int(parts[2])
+                    except ValueError:
+                        l_num, c_num = None, None
 
-                        # Extract rule name in parens if present: "message (rule-name)"
-                        rule_name = None
-                        if rest.endswith(")") and "(" in rest:
-                            msg_part, rule_part = rest.rsplit("(", 1)
-                            rest = msg_part.strip()
-                            rule_name = rule_part[:-1].strip()
+                    rest = parts[3].strip()
+                    severity = DiagnosticSeverity.WARNING
+                    if rest.startswith("[error]"):
+                        severity = DiagnosticSeverity.ERROR
+                        rest = rest.replace("[error]", "").strip()
+                    elif rest.startswith("[warning]"):
+                        rest = rest.replace("[warning]", "").strip()
 
-                        diagnostics.append(
-                            Diagnostic(
-                                path=rel_path,
-                                line=l_num,
-                                column=c_num,
-                                severity=severity,
-                                rule=rule_name,
-                                message=rest,
-                                source="yamllint",
-                                category=DiagnosticCategory.LINT,
-                                provider="yamllint",
-                                provider_priority=2,
-                                provider_type="opensource",
-                                rule_origin="External engine",
-                                documentation_url=f"https://yamllint.readthedocs.io/en/stable/rules.html#{rule_name}" if rule_name else "https://yamllint.readthedocs.io",
-                            )
+                    # Extract rule name in parens if present: "message (rule-name)"
+                    rule_name = None
+                    if rest.endswith(")") and "(" in rest:
+                        msg_part, rule_part = rest.rsplit("(", 1)
+                        rest = msg_part.strip()
+                        rule_name = rule_part[:-1].strip()
+
+                    diagnostics.append(
+                        Diagnostic(
+                            path=rel_path,
+                            line=l_num,
+                            column=c_num,
+                            severity=severity,
+                            rule=rule_name,
+                            message=rest,
+                            source="yamllint",
+                            category=DiagnosticCategory.LINT,
+                            provider="yamllint",
+                            provider_priority=2,
+                            provider_type="opensource",
+                            rule_origin="External engine",
+                            documentation_url=f"https://yamllint.readthedocs.io/en/stable/rules.html#{rule_name}" if rule_name else "https://yamllint.readthedocs.io",
                         )
-            except Exception:
-                pass
+                    )
 
         return diagnostics

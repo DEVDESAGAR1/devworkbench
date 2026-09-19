@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from devworkbench.models import (
+    CommandExecution,
     Diagnostic,
     FileDetection,
     FixCandidate,
@@ -22,6 +23,21 @@ class BaseAdapter(ABC):
     Each adapter encapsulates tool invocation (detect, format, lint, validate, analyze)
     for a specific technology while returning normalized diagnostics.
     """
+
+    def __init__(self) -> None:
+        self.executions: List[CommandExecution] = []
+
+    def record_execution(self, execution: CommandExecution) -> None:
+        """Record an execution telemetry object."""
+        self.executions.append(execution)
+
+    def get_executions(self) -> List[CommandExecution]:
+        """Retrieve all recorded executions."""
+        return list(self.executions)
+
+    def clear_executions(self) -> None:
+        """Clear recorded executions for a new run."""
+        self.executions.clear()
 
     @staticmethod
     def find_tool(tool_name: str) -> Optional[str]:

@@ -1,5 +1,10 @@
 # DevWorkBench
 
+[![CI](https://github.com/DEVDESAGAR1/devworkbench/actions/workflows/ci.yml/badge.svg)](https://github.com/DEVDESAGAR1/devworkbench/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/devworkbench.svg)](https://pypi.org/project/devworkbench/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/devworkbench.svg)](https://pypi.org/project/devworkbench/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 > **A local-first, open-source developer & DevOps workbench CLI.**
 
 DevWorkBench is a unified, deterministic command-line workbench for analyzing, formatting, linting, validating, and diagnosing DevOps and developer files across modern stacks.

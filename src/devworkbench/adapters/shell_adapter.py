@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
+from devworkbench.execution import CommandRunner
 from devworkbench.models import (
     Diagnostic,
     DiagnosticCategory,
@@ -45,51 +46,52 @@ class ShellAdapter(BaseAdapter):
 
         rel_path = detection.relative_path
 
-        try:
-            proc = subprocess.run(
-                ["shellcheck", "-f", "json", str(file_path)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=10,
-            )
-            if proc.stdout.strip():
-                try:
-                    comments = json.loads(proc.stdout)
-                    for c in comments:
-                        level_str = c.get("level", "warning").lower()
-                        if level_str == "error":
-                            sev = DiagnosticSeverity.ERROR
-                        elif level_str == "warning":
-                            sev = DiagnosticSeverity.WARNING
-                        else:
-                            sev = DiagnosticSeverity.INFO
+        exec_res = CommandRunner.run_command(
+            executable="shellcheck",
+            args=["-f", "json", str(file_path)],
+            technology="Shell",
+            capability="shell_lint",
+            provider_type="native",
+            provider_name="shellcheck",
+            cwd=file_path.parent,
+            timeout_seconds=10.0,
+        )
+        self.record_execution(exec_res)
 
-                        rule_code = f"SC{c.get('code')}" if c.get("code") else None
-                        diagnostics.append(
-                            Diagnostic(
-                                path=rel_path,
-                                line=c.get("line"),
-                                column=c.get("column"),
-                                end_line=c.get("endLine"),
-                                end_column=c.get("endColumn"),
-                                severity=sev,
-                                rule=rule_code,
-                                message=c.get("message", "Shell issue"),
-                                source="shellcheck",
-                                category=DiagnosticCategory.LINT,
-                                fix_available=bool(c.get("fix")),
-                                provider="shellcheck",
-                                provider_priority=1,
-                                provider_type="native",
-                                rule_origin="Native CLI: shellcheck",
-                                documentation_url=f"https://www.shellcheck.net/wiki/{rule_code}" if rule_code else "https://www.shellcheck.net",
-                            )
+        if exec_res.stdout.strip():
+            try:
+                comments = json.loads(exec_res.stdout)
+                for c in comments:
+                    level_str = c.get("level", "warning").lower()
+                    if level_str == "error":
+                        sev = DiagnosticSeverity.ERROR
+                    elif level_str == "warning":
+                        sev = DiagnosticSeverity.WARNING
+                    else:
+                        sev = DiagnosticSeverity.INFO
+
+                    rule_code = f"SC{c.get('code')}" if c.get("code") else None
+                    diagnostics.append(
+                        Diagnostic(
+                            path=rel_path,
+                            line=c.get("line"),
+                            column=c.get("column"),
+                            end_line=c.get("endLine"),
+                            end_column=c.get("endColumn"),
+                            severity=sev,
+                            rule=rule_code,
+                            message=c.get("message", "Shell issue"),
+                            source="shellcheck",
+                            category=DiagnosticCategory.LINT,
+                            fix_available=bool(c.get("fix")),
+                            provider="shellcheck",
+                            provider_priority=1,
+                            provider_type="native",
+                            rule_origin="Native CLI: shellcheck",
+                            documentation_url=f"https://www.shellcheck.net/wiki/{rule_code}" if rule_code else "https://www.shellcheck.net",
                         )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    )
+            except Exception:
+                pass
 
         return diagnostics

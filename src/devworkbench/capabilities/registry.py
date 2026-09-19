@@ -204,6 +204,22 @@ class CapabilityRegistry:
         ))
 
         self.register(ToolProvider(
+            name="black",
+            technology=Technology.PYTHON,
+            capability=CapabilityType.PYTHON_FORMAT,
+            priority=ToolPriority.OPENSOURCE,
+            source="Python package / CLI binary",
+            license="MIT",
+            real_command="black --check --diff",
+            install_method=InstallMethod.PIP,
+            install_package_name="black",
+            install_hint="Install Black via 'pip install black'",
+            documentation_url="https://black.readthedocs.io",
+            is_available_fn=lambda: _is_binary_available("black") or _is_module_available("black"),
+            version_fn=lambda: _get_binary_version("black", ["--version"]),
+        ))
+
+        self.register(ToolProvider(
             name="ruff",
             technology=Technology.PYTHON,
             capability=CapabilityType.PYTHON_FORMAT,
@@ -345,6 +361,77 @@ class CapabilityRegistry:
             source="Internal engine",
             license="Apache-2.0",
             real_command="internal-rule-engine",
+            install_method=InstallMethod.BUILTIN,
+            is_available_fn=lambda: True,
+        ))
+
+        # ------------------ KUBERNETES TO HELM CONVERSION ------------------
+        self.register(ToolProvider(
+            name="helmify",
+            technology=Technology.KUBERNETES,
+            capability=CapabilityType.KUBERNETES_TO_HELM,
+            priority=ToolPriority.OPENSOURCE,
+            source="CLI binary",
+            license="MIT",
+            real_command="helmify",
+            install_method=InstallMethod.SYSTEM_PACKAGE,
+            install_hint="Install Helmify from https://github.com/arttor/helmify",
+            documentation_url="https://github.com/arttor/helmify",
+            is_available_fn=lambda: _is_binary_available("helmify"),
+            version_fn=lambda: _get_binary_version("helmify", ["--version"]),
+        ))
+
+        self.register(ToolProvider(
+            name="chartify",
+            technology=Technology.KUBERNETES,
+            capability=CapabilityType.KUBERNETES_TO_HELM,
+            priority=ToolPriority.OPENSOURCE,
+            source="CLI binary",
+            license="Apache-2.0",
+            real_command="chartify",
+            install_method=InstallMethod.SYSTEM_PACKAGE,
+            install_hint="Install Chartify from https://github.com/appscode/chartify",
+            documentation_url="https://github.com/appscode/chartify",
+            is_available_fn=lambda: _is_binary_available("chartify"),
+            version_fn=lambda: _get_binary_version("chartify", ["version"]),
+        ))
+
+        self.register(ToolProvider(
+            name="devworkbench-to-helm",
+            technology=Technology.KUBERNETES,
+            capability=CapabilityType.KUBERNETES_TO_HELM,
+            priority=ToolPriority.DEVWORKBENCH,
+            source="Internal engine",
+            license="Apache-2.0",
+            real_command="internal-helm-converter",
+            install_method=InstallMethod.BUILTIN,
+            is_available_fn=lambda: True,
+        ))
+
+        # ------------------ KUBERNETES CLEANUP ------------------
+        self.register(ToolProvider(
+            name="kubectl-neat",
+            technology=Technology.KUBERNETES,
+            capability=CapabilityType.KUBERNETES_CLEANUP,
+            priority=ToolPriority.OPENSOURCE,
+            source="CLI binary / kubectl plugin",
+            license="Apache-2.0",
+            real_command="kubectl neat -f",
+            install_method=InstallMethod.SYSTEM_PACKAGE,
+            install_hint="Install kubectl-neat via 'kubectl krew install neat' or from https://github.com/itaysk/kubectl-neat",
+            documentation_url="https://github.com/itaysk/kubectl-neat",
+            is_available_fn=lambda: _is_binary_available("kubectl-neat") or _is_binary_available("kubectl_neat"),
+            version_fn=lambda: _get_binary_version("kubectl-neat", ["version"]),
+        ))
+
+        self.register(ToolProvider(
+            name="devworkbench-k8s-clean",
+            technology=Technology.KUBERNETES,
+            capability=CapabilityType.KUBERNETES_CLEANUP,
+            priority=ToolPriority.DEVWORKBENCH,
+            source="Internal engine",
+            license="Apache-2.0",
+            real_command="internal-resource-cleaner",
             install_method=InstallMethod.BUILTIN,
             is_available_fn=lambda: True,
         ))

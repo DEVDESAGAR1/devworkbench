@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.models import (
+    CommandExecution,
     Diagnostic,
     DiagnosticCategory,
     DiagnosticSeverity,
@@ -20,6 +21,7 @@ class JenkinsAdapter(BaseAdapter):
     """Adapter for Jenkinsfiles and Groovy pipelines."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.rule_registry = RuleRegistry()
 
     @property
@@ -308,5 +310,20 @@ class JenkinsAdapter(BaseAdapter):
 
         # 4. Extract invoked DevOps tools for cross-tool correlation
         self._extract_tool_invocations(content, detection)
+
+        self.record_execution(
+            CommandExecution(
+                technology="Jenkins",
+                capability="jenkins_validation",
+                provider_type="devworkbench",
+                provider_name="devworkbench-jenkins",
+                executable="internal-pipeline-validator",
+                args=[str(file_path)],
+                command=f"pipeline_validator({rel_path})",
+                cwd=str(file_path.parent),
+                exit_code=0 if not diagnostics else 1,
+                status="PASS" if not any(d.severity == DiagnosticSeverity.ERROR for d in diagnostics) else "FAIL",
+            )
+        )
 
         return diagnostics

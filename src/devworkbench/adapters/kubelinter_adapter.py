@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
+from devworkbench.execution import CommandRunner
 from devworkbench.models import (
     Diagnostic,
     DiagnosticCategory,
@@ -44,79 +45,79 @@ class KubeLinterAdapter(BaseAdapter):
 
         # 1. Run kubeconform for OpenAPI / JSONSchema validation if available
         if self.find_tool("kubeconform"):
-            try:
-                proc = subprocess.run(
-                    ["kubeconform", "-output", "json", "-summary=false", str(file_path)],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=10,
-                )
-                if proc.stdout.strip():
-                    try:
-                        results = json.loads(proc.stdout)
-                        # kubeconform json: {"resources": [...]}
-                        for res in results.get("resources", []):
-                            status = res.get("status", "")
-                            if status in ["Invalid", "error"]:
-                                msg = res.get("msg", "Kubernetes schema validation error")
-                                diagnostics.append(
-                                    Diagnostic(
-                                        path=rel_path,
-                                        severity=DiagnosticSeverity.ERROR,
-                                        rule="kubeconform-schema",
-                                        message=msg,
-                                        source="kubeconform",
-                                        category=DiagnosticCategory.SCHEMA,
-                                        provider="kubeconform",
-                                        provider_priority=2,
-                                        provider_type="opensource",
-                                        rule_origin="OpenSource: kubeconform",
-                                        documentation_url="https://github.com/yannh/kubeconform",
-                                    )
-                                )
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            exec_res = CommandRunner.run_command(
+                executable="kubeconform",
+                args=["-output", "json", "-summary=false", str(file_path)],
+                technology="Kubernetes",
+                capability="kubernetes_schema_validation",
+                provider_type="opensource",
+                provider_name="kubeconform",
+                cwd=file_path.parent,
+                timeout_seconds=10.0,
+            )
+            self.record_execution(exec_res)
 
-        # 2. Run KubeLinter for security and best practices if available
-        if self.find_tool("kube-linter"):
-            try:
-                proc = subprocess.run(
-                    ["kube-linter", "lint", "--format", "json", str(file_path)],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=10,
-                )
-                if proc.stdout.strip():
-                    try:
-                        data = json.loads(proc.stdout)
-                        # KubeLinter: {"Reports": [{"Check": "...", "Message": "...", "Object": {...}}]}
-                        for report in data.get("Reports", []):
-                            check_name = report.get("Check", "kube-lint")
-                            msg = report.get("Message", "Kubernetes lint warning")
+            if exec_res.stdout.strip():
+                try:
+                    results = json.loads(exec_res.stdout)
+                    for res in results.get("resources", []):
+                        status = res.get("status", "")
+                        if status in ["Invalid", "error"]:
+                            msg = res.get("msg", "Kubernetes schema validation error")
                             diagnostics.append(
                                 Diagnostic(
                                     path=rel_path,
-                                    severity=DiagnosticSeverity.WARNING,
-                                    rule=check_name,
+                                    severity=DiagnosticSeverity.ERROR,
+                                    rule="kubeconform-schema",
                                     message=msg,
-                                    source="kube-linter",
-                                    category=DiagnosticCategory.LINT,
-                                    provider="kube-linter",
+                                    source="kubeconform",
+                                    category=DiagnosticCategory.SCHEMA,
+                                    provider="kubeconform",
                                     provider_priority=2,
                                     provider_type="opensource",
-                                    rule_origin="OpenSource: kube-linter",
-                                    documentation_url=f"https://docs.kubelinter.io/#/generated/checks?id={check_name.lower().replace('-', '_')}",
+                                    rule_origin="OpenSource: kubeconform",
+                                    documentation_url="https://github.com/yannh/kubeconform",
                                 )
                             )
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                except Exception:
+                    pass
+
+        # 2. Run KubeLinter for security and best practices if available
+        if self.find_tool("kube-linter"):
+            exec_res = CommandRunner.run_command(
+                executable="kube-linter",
+                args=["lint", "--format", "json", str(file_path)],
+                technology="Kubernetes",
+                capability="kubernetes_lint",
+                provider_type="opensource",
+                provider_name="kube-linter",
+                cwd=file_path.parent,
+                timeout_seconds=10.0,
+            )
+            self.record_execution(exec_res)
+
+            if exec_res.stdout.strip():
+                try:
+                    data = json.loads(exec_res.stdout)
+                    for report in data.get("Reports", []):
+                        check_name = report.get("Check", "kube-lint")
+                        msg = report.get("Message", "Kubernetes lint warning")
+                        diagnostics.append(
+                            Diagnostic(
+                                path=rel_path,
+                                severity=DiagnosticSeverity.WARNING,
+                                rule=check_name,
+                                message=msg,
+                                source="kube-linter",
+                                category=DiagnosticCategory.LINT,
+                                provider="kube-linter",
+                                provider_priority=2,
+                                provider_type="opensource",
+                                rule_origin="OpenSource: kube-linter",
+                                documentation_url=f"https://docs.kubelinter.io/#/generated/checks?id={check_name.lower().replace('-', '_')}",
+                            )
+                        )
+                except Exception:
+                    pass
 
         return diagnostics

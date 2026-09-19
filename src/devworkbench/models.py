@@ -344,6 +344,58 @@ class HelmChart:
 
 
 @dataclass
+class CommandExecution:
+    """Structured record of an external or internal command execution."""
+
+    technology: str
+    capability: str
+    provider_type: str  # "native", "opensource", "devworkbench", "manual"
+    provider_name: str
+    executable: str
+    args: List[str]
+    command: str
+    cwd: str
+    status: str  # "PASS", "FAIL", "UNAVAILABLE", "SKIPPED", "DEGRADED", "MANUAL_REVIEW"
+    duration_ms: float = 0.0
+    exit_code: Optional[int] = None
+    tool_version: Optional[str] = None
+    stdout: str = ""
+    stderr: str = ""
+    error_message: Optional[str] = None
+    fallback_provider: Optional[str] = None
+    unavailable_reason: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "technology": self.technology,
+            "capability": self.capability,
+            "provider_type": self.provider_type,
+            "provider_name": self.provider_name,
+            "tool_version": self.tool_version,
+            "executable": self.executable,
+            "args": self.args,
+            "command": self.command,
+            "cwd": self.cwd,
+            "exit_code": self.exit_code,
+            "status": self.status,
+            "duration_ms": self.duration_ms,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "error_message": self.error_message,
+            "fallback_provider": self.fallback_provider,
+            "unavailable_reason": self.unavailable_reason,
+        }
+
+
+class CheckCoverage(str, Enum):
+    """Overall coverage rating of the executed checks."""
+
+    FULL = "FULL"
+    PARTIAL = "PARTIAL"
+    DEGRADED = "DEGRADED"
+
+
+@dataclass
 class ScanSummary:
     """Aggregated metrics for a scan and analysis operation."""
 
@@ -360,6 +412,13 @@ class ScanSummary:
     root_causes_count: int = 0
     duration_ms: float = 0.0
     modified_files: int = 0  # Must always remain 0 during scan
+    coverage: CheckCoverage = CheckCoverage.FULL
+    checks_passed: int = 0
+    checks_failed: int = 0
+    checks_unavailable: int = 0
+    checks_skipped: int = 0
+    checks_degraded: int = 0
+    manual_review_count: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -376,6 +435,13 @@ class ScanSummary:
             "root_causes_count": self.root_causes_count,
             "duration_ms": self.duration_ms,
             "modified_files": self.modified_files,
+            "coverage": self.coverage.value if hasattr(self.coverage, "value") else str(self.coverage),
+            "checks_passed": self.checks_passed,
+            "checks_failed": self.checks_failed,
+            "checks_unavailable": self.checks_unavailable,
+            "checks_skipped": self.checks_skipped,
+            "checks_degraded": self.checks_degraded,
+            "manual_review_count": self.manual_review_count,
         }
 
 
@@ -407,6 +473,7 @@ class ScanResult:
     tool_warnings: List[ToolWarning] = field(default_factory=list)
     unknown_files: List[FileDetection] = field(default_factory=list)
     errors: List[ScanError] = field(default_factory=list)
+    executions: List[CommandExecution] = field(default_factory=list)
     summary: ScanSummary = field(default_factory=ScanSummary)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -420,6 +487,125 @@ class ScanResult:
             "tool_warnings": [tw.to_dict() for tw in self.tool_warnings],
             "unknown_files": [u.to_dict() for u in self.unknown_files],
             "errors": [e.to_dict() for e in self.errors],
+            "executions": [e.to_dict() for e in self.executions],
+        }
+
+
+class ResourceAction(str, Enum):
+    """Classification of resources during conversion/reconciliation."""
+
+    KEEP = "KEEP"
+    UPDATE = "UPDATE"
+    CREATE = "CREATE"
+    REVIEW = "REVIEW"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+
+
+@dataclass
+class ResourcePlanItem:
+    """An individual resource planned for conversion into Helm."""
+
+    kind: str
+    name: str
+    api_version: str
+    action: ResourceAction
+    target_file: str
+    reason: str
+    details: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "name": self.name,
+            "api_version": self.api_version,
+            "action": self.action.value,
+            "target_file": self.target_file,
+            "reason": self.reason,
+            "details": self.details,
+        }
+
+
+@dataclass
+class ConversionPlan:
+    """Plan detailing how Kubernetes manifests will be converted into a Helm chart."""
+
+    source_paths: List[str]
+    target_chart_name: str
+    target_dir: str
+    existing_chart_detected: bool
+    resource_items: List[ResourcePlanItem] = field(default_factory=list)
+    engine_used: str = "internal"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source_paths": self.source_paths,
+            "target_chart_name": self.target_chart_name,
+            "target_dir": self.target_dir,
+            "existing_chart_detected": self.existing_chart_detected,
+            "engine_used": self.engine_used,
+            "resource_items": [item.to_dict() for item in self.resource_items],
+        }
+
+
+@dataclass
+class ConversionResult:
+    """Result of converting Kubernetes manifests into a Helm chart."""
+
+    target_dir: str
+    chart_name: str
+    plan: ConversionPlan
+    created_files: List[str] = field(default_factory=list)
+    updated_files: List[str] = field(default_factory=list)
+    kept_files: List[str] = field(default_factory=list)
+    validation_diagnostics: List[Diagnostic] = field(default_factory=list)
+    executions: List[CommandExecution] = field(default_factory=list)
+    duration_ms: float = 0.0
+    status: str = "success"
+    error: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "target_dir": self.target_dir,
+            "chart_name": self.chart_name,
+            "status": self.status,
+            "error": self.error,
+            "plan": self.plan.to_dict(),
+            "created_files": self.created_files,
+            "updated_files": self.updated_files,
+            "kept_files": self.kept_files,
+            "validation_diagnostics": [d.to_dict() for d in self.validation_diagnostics],
+            "executions": [e.to_dict() for e in self.executions],
+            "duration_ms": self.duration_ms,
+        }
+
+
+@dataclass
+class CleanupResult:
+    """Result of cleaning a Kubernetes manifest."""
+
+    source_path: str
+    original_yaml: str
+    cleaned_yaml: str
+    fields_removed: List[str] = field(default_factory=list)
+    diff: str = ""
+    engine_used: str = "internal"
+    execution: Optional[CommandExecution] = None
+    validation_passed: bool = True
+    written: bool = False
+    output_path: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source_path": self.source_path,
+            "original_yaml": self.original_yaml,
+            "cleaned_yaml": self.cleaned_yaml,
+            "fields_removed": self.fields_removed,
+            "diff": self.diff,
+            "engine_used": self.engine_used,
+            "execution": self.execution.to_dict() if self.execution else None,
+            "validation_passed": self.validation_passed,
+            "written": self.written,
+            "output_path": self.output_path,
         }
 
 

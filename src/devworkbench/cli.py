@@ -453,5 +453,170 @@ def analyze_build_cmd(
         sys.exit(1)
 
 
+@main.command(name="clean")
+@click.argument("target", type=str, default="-")
+@click.option(
+    "-w",
+    "--write",
+    "write_flag",
+    is_flag=True,
+    default=False,
+    help="Overwrite the source file directly with cleaned content.",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Write cleaned manifest to specified output file.",
+)
+@click.option(
+    "-f",
+    "--format",
+    "output_format",
+    type=click.Choice(["human", "yaml", "diff", "json"], case_sensitive=False),
+    default="yaml",
+    help="Output format (yaml, diff, human-readable terminal output, or JSON).",
+)
+@click.option(
+    "--json",
+    "json_flag",
+    is_flag=True,
+    default=False,
+    help="Shortcut for --format json.",
+)
+def clean_cmd(
+    target: str,
+    write_flag: bool,
+    output_file: Optional[str],
+    output_format: str,
+    json_flag: bool,
+) -> None:
+    """Clean runtime status and metadata from Kubernetes manifests (file or '-' for stdin)."""
+    if json_flag:
+        output_format = "json"
+
+    raw_input = ""
+    write_target: Optional[str] = output_file
+
+    if target == "-":
+        stdin_stream = click.get_text_stream("stdin")
+        raw_input = stdin_stream.read()
+    else:
+        target_path = Path(target)
+        if not target_path.is_file():
+            error_console.print(f"[bold red]Error:[/bold red] File does not exist: [yellow]{target}[/yellow]")
+            sys.exit(1)
+        raw_input = str(target_path)
+        if write_flag:
+            write_target = str(target_path)
+
+    runner = Runner()
+    try:
+        runner.run_clean(
+            target_path_or_content=raw_input,
+            write_output_path=write_target,
+            output_format=output_format,
+            output_file=output_file if not write_flag else None,
+        )
+    except Exception as e:
+        error_console.print(f"[bold red]Clean failed:[/bold red] {e}")
+        sys.exit(1)
+
+
+@main.command(name="convert")
+@click.argument("targets", nargs=-1, type=click.Path(exists=False, file_okay=True, dir_okay=True, readable=True))
+@click.option(
+    "--to",
+    "to_format",
+    type=click.Choice(["helm"], case_sensitive=False),
+    default="helm",
+    help="Target conversion format (currently supports 'helm').",
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    "output_dir",
+    type=click.Path(file_okay=False, writable=True),
+    default=".",
+    help="Target output directory for generated chart.",
+)
+@click.option(
+    "-n",
+    "--name",
+    "chart_name",
+    type=str,
+    default=None,
+    help="Name of the generated Helm chart.",
+)
+@click.option(
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
+    help="Preview conversion plan without writing any files.",
+)
+@click.option(
+    "--force",
+    "force",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing template files in target chart directory.",
+)
+@click.option(
+    "-f",
+    "--format",
+    "output_format",
+    type=click.Choice(["human", "json"], case_sensitive=False),
+    default="human",
+    help="Output format (human-readable terminal output or structured JSON).",
+)
+@click.option(
+    "--json",
+    "json_flag",
+    is_flag=True,
+    default=False,
+    help="Shortcut for --format json.",
+)
+def convert_cmd(
+    targets: Tuple[str, ...],
+    to_format: str,
+    output_dir: str,
+    chart_name: Optional[str],
+    dry_run: bool,
+    force: bool,
+    output_format: str,
+    json_flag: bool,
+) -> None:
+    """Convert Kubernetes YAML manifests into a structured Helm chart."""
+    if json_flag:
+        output_format = "json"
+
+    if not targets:
+        error_console.print("[bold red]Error:[/bold red] Missing input target paths to convert.")
+        sys.exit(1)
+
+    target_paths = list(targets)
+    for p in target_paths:
+        if not Path(p).exists():
+            error_console.print(f"[bold red]Error:[/bold red] Path does not exist: [yellow]{p}[/yellow]")
+            sys.exit(1)
+
+    runner = Runner()
+    try:
+        runner.run_convert(
+            input_paths=target_paths,
+            target_dir=output_dir,
+            chart_name=chart_name,
+            to_format=to_format,
+            dry_run=dry_run,
+            force=force,
+            output_format=output_format,
+        )
+    except Exception as e:
+        error_console.print(f"[bold red]Conversion failed:[/bold red] {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()
