@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import click
 from rich.console import Console
@@ -32,7 +31,6 @@ def main() -> None:
 
     Analyze, format, lint, validate, and fix common DevOps and developer files.
     """
-    pass
 
 
 @main.command(name="version")
@@ -41,7 +39,7 @@ def version_cmd() -> None:
     console.print(f"[bold cyan]DevWorkBench[/bold cyan] version [bold green]{__version__}[/bold green]")
 
 
-from devworkbench.capabilities import CapabilityRegistry, CapabilityResolver, DependencyInstaller
+from devworkbench.capabilities import CapabilityResolver, DependencyInstaller
 from devworkbench.doctor import DoctorEngine
 
 
@@ -61,7 +59,7 @@ def doctor_cmd(json_flag: bool) -> None:
 @click.option("-t", "--technology", type=str, default=None, help="Install dependencies for a specific technology.")
 @click.option("--dry-run", is_flag=True, default=False, help="Preview dependency installations without executing them.")
 @click.option("--json", "json_flag", is_flag=True, default=False, help="Output setup report as JSON.")
-def setup_cmd(technology: Optional[str], dry_run: bool, json_flag: bool) -> None:
+def setup_cmd(technology: str | None, dry_run: bool, json_flag: bool) -> None:
     """Explicitly verify and install required DevOps tools and libraries."""
     installer = DependencyInstaller()
     report = installer.setup_environment(technology=technology, dry_run=dry_run)
@@ -76,7 +74,7 @@ def setup_cmd(technology: Optional[str], dry_run: bool, json_flag: bool) -> None
 @main.command(name="capabilities")
 @click.option("-t", "--technology", type=str, default=None, help="Filter capabilities by technology.")
 @click.option("--json", "json_flag", is_flag=True, default=False, help="Output capabilities and provider selection as JSON.")
-def capabilities_cmd(technology: Optional[str], json_flag: bool) -> None:
+def capabilities_cmd(technology: str | None, json_flag: bool) -> None:
     """Inspect supported capabilities and active provider hierarchy resolution."""
     config = ScanConfig.load_from_dir(Path(".").resolve())
     resolver = CapabilityResolver()
@@ -85,9 +83,7 @@ def capabilities_cmd(technology: Optional[str], json_flag: bool) -> None:
     if technology:
         filtered = {}
         for cap, res in results.items():
-            if res.selected_provider and res.selected_provider.technology.value.lower() == technology.lower():
-                filtered[cap] = res
-            elif any(p.technology.value.lower() == technology.lower() for p in res.all_providers):
+            if res.selected_provider and res.selected_provider.technology.value.lower() == technology.lower() or any(p.technology.value.lower() == technology.lower() for p in res.all_providers):
                 filtered[cap] = res
         results = filtered
 
@@ -127,7 +123,7 @@ def tools_cmd(json_flag: bool) -> None:
 @main.command(name="rules")
 @click.option("-t", "--technology", type=str, default=None, help="Filter rules by technology (e.g. kubernetes, jenkins, openshift, helm).")
 @click.option("--json", "json_flag", is_flag=True, default=False, help="Output rules catalog as JSON.")
-def rules_cmd(technology: Optional[str], json_flag: bool) -> None:
+def rules_cmd(technology: str | None, json_flag: bool) -> None:
     """List all built-in DevOps best-practice and security rules."""
     registry = RuleRegistry()
     if json_flag:
@@ -197,11 +193,11 @@ def rules_cmd(technology: Optional[str], json_flag: bool) -> None:
     help="Enable detailed/verbose output (includes unknown files and detection hints).",
 )
 def scan_cmd(
-    paths: Tuple[str, ...],
+    paths: tuple[str, ...],
     output_format: str,
     json_flag: bool,
     custom_ignores: tuple,
-    output_file: Optional[str],
+    output_file: str | None,
     verbose: bool,
 ) -> None:
     """Recursively scan and analyze one or more files and/or directories for DevOps diagnostics."""
@@ -280,12 +276,12 @@ def scan_cmd(
     help="Write fix report to specified output file.",
 )
 def fix_cmd(
-    paths: Tuple[str, ...],
+    paths: tuple[str, ...],
     dry_run: bool,
     yes_flag: bool,
     output_format: str,
     json_flag: bool,
-    output_file: Optional[str],
+    output_file: str | None,
 ) -> None:
     """Safely apply automated fixes using native open-source engines and best-practice rules."""
     if json_flag:
@@ -422,7 +418,7 @@ def analyze_build_cmd(
     log_path: str,
     output_format: str,
     json_flag: bool,
-    output_file: Optional[str],
+    output_file: str | None,
 ) -> None:
     """Streamingly analyze a Jenkins, Kubernetes, OpenShift, Helm, or Docker build log file (or '-' for stdin)."""
     if json_flag:
@@ -488,7 +484,7 @@ def analyze_build_cmd(
 def clean_cmd(
     target: str,
     write_flag: bool,
-    output_file: Optional[str],
+    output_file: str | None,
     output_format: str,
     json_flag: bool,
 ) -> None:
@@ -497,7 +493,7 @@ def clean_cmd(
         output_format = "json"
 
     raw_input = ""
-    write_target: Optional[str] = output_file
+    write_target: str | None = output_file
 
     if target == "-":
         stdin_stream = click.get_text_stream("stdin")
@@ -579,10 +575,10 @@ def clean_cmd(
     help="Shortcut for --format json.",
 )
 def convert_cmd(
-    targets: Tuple[str, ...],
+    targets: tuple[str, ...],
     to_format: str,
     output_dir: str,
-    chart_name: Optional[str],
+    chart_name: str | None,
     dry_run: bool,
     force: bool,
     output_format: str,

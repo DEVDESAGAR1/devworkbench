@@ -9,7 +9,7 @@ import re
 import shutil
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import yaml
 
@@ -19,7 +19,6 @@ from devworkbench.models import (
     ConversionPlan,
     ConversionResult,
     Diagnostic,
-    DiagnosticSeverity,
     ResourceAction,
     ResourcePlanItem,
 )
@@ -30,9 +29,9 @@ class HelmConverter:
     """Non-destructive Kubernetes manifest to Helm chart converter."""
 
     @staticmethod
-    def _parse_resources(input_paths: List[Path]) -> List[Tuple[Path, Dict[str, Any]]]:
+    def _parse_resources(input_paths: list[Path]) -> list[tuple[Path, dict[str, Any]]]:
         """Parse all valid Kubernetes manifests from the input paths."""
-        resources: List[Tuple[Path, Dict[str, Any]]] = []
+        resources: list[tuple[Path, dict[str, Any]]] = []
         for p in input_paths:
             if p.is_file():
                 try:
@@ -61,7 +60,7 @@ class HelmConverter:
     @classmethod
     def plan_conversion(
         cls,
-        input_paths: List[Path],
+        input_paths: list[Path],
         target_dir: Path,
         chart_name: str,
     ) -> ConversionPlan:
@@ -70,10 +69,10 @@ class HelmConverter:
         existing_chart_detected = (chart_root / "Chart.yaml").is_file() or (chart_root / "Chart.yml").is_file()
 
         raw_resources = cls._parse_resources(input_paths)
-        resource_items: List[ResourcePlanItem] = []
+        resource_items: list[ResourcePlanItem] = []
 
         # Check existing template names if chart exists
-        existing_templates: Dict[str, Path] = {}
+        existing_templates: dict[str, Path] = {}
         if existing_chart_detected:
             tmpl_dir = chart_root / "templates"
             if tmpl_dir.is_dir():
@@ -137,9 +136,9 @@ class HelmConverter:
     @classmethod
     def convert(
         cls,
-        input_paths: List[Path],
+        input_paths: list[Path],
         target_dir: Path,
-        chart_name: Optional[str] = None,
+        chart_name: str | None = None,
         dry_run: bool = False,
         force: bool = False,
         use_external_tool: bool = True,
@@ -153,11 +152,11 @@ class HelmConverter:
         chart_root = target_dir if target_dir.name == effective_chart_name else target_dir / effective_chart_name
         plan = cls.plan_conversion(input_paths, target_dir, effective_chart_name)
 
-        executions: List[CommandExecution] = []
-        validation_diagnostics: List[Diagnostic] = []
-        created_files: List[str] = []
-        updated_files: List[str] = []
-        kept_files: List[str] = []
+        executions: list[CommandExecution] = []
+        validation_diagnostics: list[Diagnostic] = []
+        created_files: list[str] = []
+        updated_files: list[str] = []
+        kept_files: list[str] = []
 
         if dry_run:
             duration_ms = (time.perf_counter() - start_time) * 1000
@@ -230,7 +229,7 @@ Create a default fully qualified app name.
 
         # 3. Process each Kubernetes resource and generate templates + values
         raw_resources = cls._parse_resources(input_paths)
-        values_data: Dict[str, Any] = {
+        values_data: dict[str, Any] = {
             "replicaCount": 1,
             "image": {
                 "repository": "nginx",

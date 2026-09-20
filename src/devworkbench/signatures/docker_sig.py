@@ -1,10 +1,10 @@
 """Docker and container build error signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_docker_signatures() -> List[BaseSignature]:
+def get_docker_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="DOCKER-001",

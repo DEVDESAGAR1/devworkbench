@@ -2,7 +2,6 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass
@@ -17,7 +16,7 @@ class SignatureMatch:
     message: str
     is_root_cause_candidate: bool = False
     confidence: str = "Possible root cause"
-    downstream_impacts: List[str] = field(default_factory=list)
+    downstream_impacts: list[str] = field(default_factory=list)
 
 
 class BaseSignature:
@@ -28,7 +27,7 @@ class BaseSignature:
         signature_id: str,
         source: str,
         category: str,
-        patterns: List[str],
+        patterns: list[str],
         message_template: str,
         is_root_cause: bool = False,
         confidence: str = "Possible root cause",
@@ -41,7 +40,7 @@ class BaseSignature:
         self.is_root_cause = is_root_cause
         self.confidence = confidence
 
-    def match_line(self, line: str, line_number: int) -> Optional[SignatureMatch]:
+    def match_line(self, line: str, line_number: int) -> SignatureMatch | None:
         """Test if the line matches any pattern of this signature."""
         for regex in self.regexes:
             m = regex.search(line)

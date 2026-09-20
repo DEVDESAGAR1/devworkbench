@@ -3,6 +3,7 @@
 import hashlib
 import os
 from pathlib import Path
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main

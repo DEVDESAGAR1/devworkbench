@@ -1,6 +1,7 @@
 """Unit tests for the Scanner."""
 
 from pathlib import Path
+
 import pytest
 
 from devworkbench.configuration import ScanConfig

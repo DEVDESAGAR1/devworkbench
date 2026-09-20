@@ -5,7 +5,7 @@ import importlib.util
 import platform
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from devworkbench import __version__
 from devworkbench.capabilities.model import ToolPriority
@@ -19,10 +19,10 @@ class DependencyStatus:
 
     name: str
     available: bool
-    version: Optional[str] = None
+    version: str | None = None
     required: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "available": self.available,
@@ -37,12 +37,12 @@ class ExternalToolStatus:
 
     name: str
     available: bool
-    version: Optional[str] = None
+    version: str | None = None
     source: str = "CLI binary"
     license: str = "Unknown"
-    install_hint: Optional[str] = None
+    install_hint: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "available": self.available,
@@ -63,11 +63,11 @@ class DoctorDiagnostic:
     platform_release: str
     architecture: str
     python_executable: str
-    core_dependencies: List[DependencyStatus] = field(default_factory=list)
-    external_tools: List[ExternalToolStatus] = field(default_factory=list)
-    capability_summary: Dict[str, int] = field(default_factory=dict)
+    core_dependencies: list[DependencyStatus] = field(default_factory=list)
+    external_tools: list[ExternalToolStatus] = field(default_factory=list)
+    capability_summary: dict[str, int] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "system": {
                 "devworkbench_version": self.devworkbench_version,
@@ -87,7 +87,7 @@ class DoctorEngine:
     """Executes offline system, dependency, and tool health diagnostics."""
 
     @staticmethod
-    def _check_python_package(pkg_name: str, import_name: Optional[str] = None) -> DependencyStatus:
+    def _check_python_package(pkg_name: str, import_name: str | None = None) -> DependencyStatus:
         """Check if a Python package is available and probe its version."""
         imp = import_name or pkg_name
         available = importlib.util.find_spec(imp) is not None
@@ -109,7 +109,7 @@ class DoctorEngine:
         )
 
     @classmethod
-    def diagnose(cls, registry: Optional[CapabilityRegistry] = None) -> DoctorDiagnostic:
+    def diagnose(cls, registry: CapabilityRegistry | None = None) -> DoctorDiagnostic:
         """Run complete doctor health diagnostics."""
         reg = registry or CapabilityRegistry()
         resolver = CapabilityResolver(reg)
@@ -123,7 +123,7 @@ class DoctorEngine:
         ]
 
         # 2. External tools from registry
-        external_tools: List[ExternalToolStatus] = []
+        external_tools: list[ExternalToolStatus] = []
         seen_tools = set()
 
         for provider in reg.providers:

@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-from typing import Dict, List, Optional, Set
 
 from devworkbench.capabilities.model import (
     InstallationErrorKind,
@@ -13,13 +12,12 @@ from devworkbench.capabilities.model import (
     ToolProvider,
 )
 from devworkbench.capabilities.registry import CapabilityRegistry
-from devworkbench.models import Technology
 
 
 class DependencyInstaller:
     """Safe, verifiable dependency installation manager for DevWorkBench."""
 
-    def __init__(self, registry: Optional[CapabilityRegistry] = None) -> None:
+    def __init__(self, registry: CapabilityRegistry | None = None) -> None:
         self.registry = registry or CapabilityRegistry()
 
     @staticmethod
@@ -159,7 +157,7 @@ class DependencyInstaller:
                     technology=provider.technology,
                     status="failed",
                     error_kind=InstallationErrorKind.UNKNOWN,
-                    message=f"Unexpected installation error: {str(ex)}",
+                    message=f"Unexpected installation error: {ex!s}",
                     fallback_provider=fallback,
                     verified=False,
                 )
@@ -175,12 +173,12 @@ class DependencyInstaller:
 
     def setup_environment(
         self,
-        technology: Optional[str] = None,
+        technology: str | None = None,
         dry_run: bool = False,
     ) -> SetupReport:
         """Run setup for all registered providers, attempting installation and reporting fallbacks."""
         report = SetupReport()
-        seen_tools: Set[str] = set()
+        seen_tools: set[str] = set()
 
         for provider in self.registry.providers:
             if provider.name in seen_tools:

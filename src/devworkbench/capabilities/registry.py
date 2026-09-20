@@ -3,7 +3,6 @@
 import importlib.util
 import shutil
 import subprocess
-from typing import Callable, Dict, List, Optional
 
 from devworkbench.capabilities.model import (
     CapabilityType,
@@ -27,7 +26,7 @@ def _is_module_available(module_name: str) -> bool:
         return False
 
 
-def _get_binary_version(cmd: str, args: List[str] = ["--version"]) -> Optional[str]:
+def _get_binary_version(cmd: str, args: list[str] = ["--version"]) -> str | None:
     """Retrieve version string from binary if available."""
     if not _is_binary_available(cmd):
         return None
@@ -51,19 +50,19 @@ class CapabilityRegistry:
     """Central registry of all capability providers."""
 
     def __init__(self) -> None:
-        self.providers: List[ToolProvider] = []
+        self.providers: list[ToolProvider] = []
         self._register_default_providers()
 
     def register(self, provider: ToolProvider) -> None:
         """Register a tool provider."""
         self.providers.append(provider)
 
-    def get_providers_for_capability(self, capability: CapabilityType) -> List[ToolProvider]:
+    def get_providers_for_capability(self, capability: CapabilityType) -> list[ToolProvider]:
         """Get all providers registered for a specific capability, sorted by priority (1 to 4)."""
         matches = [p for p in self.providers if p.capability == capability]
         return sorted(matches, key=lambda p: int(p.priority))
 
-    def get_providers_for_technology(self, tech: Technology) -> List[ToolProvider]:
+    def get_providers_for_technology(self, tech: Technology) -> list[ToolProvider]:
         """Get all providers registered for a technology."""
         return [p for p in self.providers if p.technology == tech]
 

@@ -1,8 +1,9 @@
 """Data models and enums for the Tool Selection Hierarchy, Capabilities, and Dependency Installation."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from devworkbench.models import Technology
 
@@ -102,15 +103,15 @@ class ToolProvider:
     priority: ToolPriority
     source: str  # e.g. "CLI binary", "Python package", "Internal engine"
     license: str  # e.g. "Apache-2.0", "MIT", "GPL-3.0"
-    real_command: Optional[str] = None  # Exact CLI command / subcommand verified
+    real_command: str | None = None  # Exact CLI command / subcommand verified
     install_method: InstallMethod = InstallMethod.MANUAL
-    install_package_name: Optional[str] = None  # e.g. "ruff", "pyyaml", "checkov"
+    install_package_name: str | None = None  # e.g. "ruff", "pyyaml", "checkov"
     offline_capable: bool = True
-    install_hint: Optional[str] = None
-    documentation_url: Optional[str] = None
-    is_available_fn: Optional[Callable[[], bool]] = field(default=None, repr=False)
-    version_fn: Optional[Callable[[], Optional[str]]] = field(default=None, repr=False)
-    verify_fn: Optional[Callable[[], bool]] = field(default=None, repr=False)
+    install_hint: str | None = None
+    documentation_url: str | None = None
+    is_available_fn: Callable[[], bool] | None = field(default=None, repr=False)
+    version_fn: Callable[[], str | None] | None = field(default=None, repr=False)
+    verify_fn: Callable[[], bool] | None = field(default=None, repr=False)
 
     @property
     def is_available(self) -> bool:
@@ -123,7 +124,7 @@ class ToolProvider:
         return True
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> str | None:
         """Get the provider version if available."""
         if self.version_fn is not None:
             try:
@@ -132,7 +133,7 @@ class ToolProvider:
                 return None
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "technology": self.technology.value,
@@ -157,16 +158,16 @@ class CapabilityResult:
     """Result of resolving a capability against the provider hierarchy."""
 
     capability: CapabilityType
-    selected_provider: Optional[ToolProvider]
+    selected_provider: ToolProvider | None
     priority: ToolPriority
     status: str  # "available", "manual_review", "configured_unavailable", "no_provider"
-    all_providers: List[ToolProvider] = field(default_factory=list)
-    fallback_chain: List[str] = field(default_factory=list)
-    fallback_provider: Optional[str] = None
-    reason: Optional[str] = None
-    message: Optional[str] = None
+    all_providers: list[ToolProvider] = field(default_factory=list)
+    fallback_chain: list[str] = field(default_factory=list)
+    fallback_provider: str | None = None
+    reason: str | None = None
+    message: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "capability": self.capability.value,
             "selected_provider": self.selected_provider.to_dict() if self.selected_provider else None,
@@ -188,13 +189,13 @@ class InstallationResult:
     tool_name: str
     technology: Technology
     status: str  # "success", "already_available", "failed", "skipped"
-    error_kind: Optional[InstallationErrorKind] = None
+    error_kind: InstallationErrorKind | None = None
     message: str = ""
-    fallback_provider: Optional[str] = None
-    version: Optional[str] = None
+    fallback_provider: str | None = None
+    version: str | None = None
     verified: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool_name": self.tool_name,
             "technology": self.technology.value,
@@ -211,17 +212,17 @@ class InstallationResult:
 class SetupReport:
     """Structured report of dependency and tool setup."""
 
-    successful: List[InstallationResult] = field(default_factory=list)
-    already_available: List[InstallationResult] = field(default_factory=list)
-    failed: List[InstallationResult] = field(default_factory=list)
-    skipped: List[InstallationResult] = field(default_factory=list)
-    fallbacks: List[Dict[str, str]] = field(default_factory=list)
+    successful: list[InstallationResult] = field(default_factory=list)
+    already_available: list[InstallationResult] = field(default_factory=list)
+    failed: list[InstallationResult] = field(default_factory=list)
+    skipped: list[InstallationResult] = field(default_factory=list)
+    fallbacks: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def total_attempted(self) -> int:
         return len(self.successful) + len(self.failed)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "successful": [r.to_dict() for r in self.successful],
             "already_available": [r.to_dict() for r in self.already_available],

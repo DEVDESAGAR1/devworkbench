@@ -1,6 +1,5 @@
 """Adapter registry managing technology adapters and dispatching."""
 
-from typing import Dict, List, Optional, Set
 
 from devworkbench.adapters.actionlint_adapter import ActionlintAdapter
 from devworkbench.adapters.ansible_adapter import AnsibleLintAdapter
@@ -22,7 +21,7 @@ class AdapterRegistry:
     """Central registry of all registered technology adapters."""
 
     def __init__(self) -> None:
-        self.adapters: List[BaseAdapter] = [
+        self.adapters: list[BaseAdapter] = [
             JenkinsAdapter(),
             PythonAdapter(),
             YamlAdapter(),
@@ -37,21 +36,21 @@ class AdapterRegistry:
             HelmAdapter(),
         ]
 
-    def get_adapters_for_file(self, detection: FileDetection) -> List[BaseAdapter]:
+    def get_adapters_for_file(self, detection: FileDetection) -> list[BaseAdapter]:
         """Find all adapters capable of processing this file detection."""
         return [adapter for adapter in self.adapters if adapter.can_handle(detection)]
 
-    def get_adapter_for_tech(self, tech: Technology) -> Optional[BaseAdapter]:
+    def get_adapter_for_tech(self, tech: Technology) -> BaseAdapter | None:
         """Find an adapter handling the given technology."""
         for adapter in self.adapters:
             if adapter.technology == tech:
                 return adapter
         return None
 
-    def get_tool_warnings(self, active_technologies: Set[Technology]) -> List[ToolWarning]:
+    def get_tool_warnings(self, active_technologies: set[Technology]) -> list[ToolWarning]:
         """Collect tool availability warnings only for technologies actually discovered in the workspace."""
-        warnings: List[ToolWarning] = []
-        seen_tools: Set[str] = set()
+        warnings: list[ToolWarning] = []
+        seen_tools: set[str] = set()
 
         for tech in active_technologies:
             for adapter in self.adapters:

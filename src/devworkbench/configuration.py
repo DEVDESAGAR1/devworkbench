@@ -3,13 +3,12 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 import yaml
 
 from devworkbench.models import DiagnosticSeverity
 
-DEFAULT_IGNORED_DIRS: Set[str] = {
+DEFAULT_IGNORED_DIRS: set[str] = {
     ".git",
     ".svn",
     ".hg",
@@ -39,7 +38,7 @@ DEFAULT_IGNORED_DIRS: Set[str] = {
     "Thumbs.db",
 }
 
-DEFAULT_IGNORED_FILES: Set[str] = {
+DEFAULT_IGNORED_FILES: set[str] = {
     ".DS_Store",
     "Thumbs.db",
     "package-lock.json",
@@ -58,18 +57,18 @@ class ScanConfig:
     """Configurable options for the scanner and analysis engines."""
 
     target_path: str = "."
-    ignored_dirs: Set[str] = field(default_factory=lambda: set(DEFAULT_IGNORED_DIRS))
-    ignored_files: Set[str] = field(default_factory=lambda: set(DEFAULT_IGNORED_FILES))
-    custom_ignore_patterns: List[str] = field(default_factory=list)
-    disabled_engines: Set[str] = field(default_factory=set)
-    disabled_rules: Set[str] = field(default_factory=set)
-    severity_overrides: Dict[str, DiagnosticSeverity] = field(default_factory=dict)
-    provider_preferences: Dict[str, str] = field(default_factory=dict)
+    ignored_dirs: set[str] = field(default_factory=lambda: set(DEFAULT_IGNORED_DIRS))
+    ignored_files: set[str] = field(default_factory=lambda: set(DEFAULT_IGNORED_FILES))
+    custom_ignore_patterns: list[str] = field(default_factory=list)
+    disabled_engines: set[str] = field(default_factory=set)
+    disabled_rules: set[str] = field(default_factory=set)
+    severity_overrides: dict[str, DiagnosticSeverity] = field(default_factory=dict)
+    provider_preferences: dict[str, str] = field(default_factory=dict)
     follow_symlinks: bool = False
     max_inspection_bytes: int = MAX_HEADER_INSPECTION_BYTES
     verbose: bool = False
 
-    def add_custom_ignores(self, patterns: List[str]) -> None:
+    def add_custom_ignores(self, patterns: list[str]) -> None:
         """Add custom ignore glob patterns."""
         for pattern in patterns:
             cleaned = pattern.strip()

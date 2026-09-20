@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main
@@ -41,7 +42,7 @@ def test_cli_scan_json_format() -> None:
     runner = CliRunner()
     result = runner.invoke(main, ["scan", str(repo_path), "--format", "json"])
     assert result.exit_code == 0
-    
+
     # Parse JSON and verify schema stability
     data = json.loads(result.output)
     assert "target_path" in data
@@ -55,12 +56,12 @@ def test_cli_scan_json_format() -> None:
 def test_cli_scan_to_output_file(tmp_path: Path) -> None:
     repo_path = Path(__file__).parent / "fixtures" / "synthetic_repo"
     output_json = tmp_path / "out_report.json"
-    
+
     runner = CliRunner()
     result = runner.invoke(main, ["scan", str(repo_path), "--format", "json", "-o", str(output_json)])
     assert result.exit_code == 0
     assert output_json.exists()
-    
+
     data = json.loads(output_json.read_text(encoding="utf-8"))
     assert data["summary"]["supported_files"] > 0
 

@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.models import (
@@ -32,21 +31,20 @@ class JenkinsAdapter(BaseAdapter):
     def name(self) -> str:
         return "Jenkins Pipeline Analyzer"
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         # Built-in deterministic parser is always available
         return True, None
 
     def _check_balanced_brackets(
         self, content: str, rel_path: str
-    ) -> List[Diagnostic]:
+    ) -> list[Diagnostic]:
         """Check for unmatched braces and parentheses with accurate line/column tracking."""
-        diagnostics: List[Diagnostic] = []
-        stack: List[Tuple[str, int, int]] = []  # (char, line, col)
+        diagnostics: list[Diagnostic] = []
+        stack: list[tuple[str, int, int]] = []  # (char, line, col)
 
         in_single_quote = False
         in_double_quote = False
         in_triple_quote = False
-        in_line_comment = False
         in_block_comment = False
 
         lines = content.splitlines(keepends=True)
@@ -165,9 +163,9 @@ class JenkinsAdapter(BaseAdapter):
 
     def _check_pipeline_structure(
         self, content: str, rel_path: str
-    ) -> List[Diagnostic]:
+    ) -> list[Diagnostic]:
         """Validate Declarative Pipeline structure."""
-        diagnostics: List[Diagnostic] = []
+        diagnostics: list[Diagnostic] = []
 
         if re.search(r"\bpipeline\s*\{", content):
             # Must contain 'agent' declaration: agent any, agent none, agent { ... } or agent 'label'
@@ -249,9 +247,9 @@ class JenkinsAdapter(BaseAdapter):
 
     def _extract_tool_invocations(
         self, content: str, detection: FileDetection
-    ) -> List[str]:
+    ) -> list[str]:
         """Detect when Jenkins pipeline invokes external DevOps tools (oc, kubectl, helm, docker, etc.)."""
-        invoked_tools: List[str] = []
+        invoked_tools: list[str] = []
         tool_patterns = {
             "oc": r"""\b(?:sh|bat|powershell)\s*\(?.*?['"]\s*oc\s+""",
             "kubectl": r"""\b(?:sh|bat|powershell)\s*\(?.*?['"]\s*kubectl\s+""",
@@ -268,8 +266,8 @@ class JenkinsAdapter(BaseAdapter):
         detection.metadata["invoked_tools"] = invoked_tools
         return invoked_tools
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         rel_path = detection.relative_path
 
         try:

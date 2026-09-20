@@ -1,7 +1,8 @@
 """Unit and integration tests for packaging, distribution, and doctor command."""
 
-from pathlib import Path
 import re
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from devworkbench import __version__

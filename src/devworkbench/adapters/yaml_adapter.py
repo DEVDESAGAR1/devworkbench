@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import yaml
 
@@ -53,7 +52,7 @@ class YamlAdapter(BaseAdapter):
         return detection.technology in self.SUPPORTED_TECHS
 
     @functools.lru_cache(maxsize=1)
-    def _get_yamllint_cmd(self) -> Optional[Tuple[str, ...]]:
+    def _get_yamllint_cmd(self) -> tuple[str, ...] | None:
         """Find yamllint executable if available."""
         if shutil.which("yamllint"):
             return ("yamllint",)
@@ -72,12 +71,12 @@ class YamlAdapter(BaseAdapter):
             pass
         return None
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         # PyYAML is bundled, so basic YAML syntax parsing is always available
         return True, None
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         rel_path = detection.relative_path
 
         try:

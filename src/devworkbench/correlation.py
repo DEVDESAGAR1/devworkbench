@@ -1,6 +1,5 @@
 """Cross-tool correlation engine linking static pipeline definitions with runtime diagnostics."""
 
-from typing import List, Optional
 
 from devworkbench.models import (
     Correlation,
@@ -17,18 +16,17 @@ class CorrelationEngine:
     @classmethod
     def correlate(
         cls,
-        detections: List[FileDetection],
-        diagnostics: List[Diagnostic],
-        root_causes: Optional[List[RootCauseCandidate]] = None,
-    ) -> List[Correlation]:
+        detections: list[FileDetection],
+        diagnostics: list[Diagnostic],
+        root_causes: list[RootCauseCandidate] | None = None,
+    ) -> list[Correlation]:
         """Correlate static detections and runtime diagnostics into structured correlation chains."""
-        correlations: List[Correlation] = []
+        correlations: list[Correlation] = []
         root_causes = root_causes or []
 
         # 1. Check for Jenkins -> Helm -> Kubernetes chain
         jenkins_files = [d for d in detections if d.technology == Technology.JENKINS]
         helm_files = [d for d in detections if d.technology == Technology.HELM]
-        k8s_files = [d for d in detections if d.technology == Technology.KUBERNETES]
 
         for jf in jenkins_files:
             invoked_tools = jf.metadata.get("invoked_tools", [])

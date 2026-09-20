@@ -1,8 +1,8 @@
 """Domain models and data structures for DevWorkBench."""
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class Technology(str, Enum):
@@ -51,7 +51,7 @@ class FileCategory(str, Enum):
     UNKNOWN = "Unknown"
 
 
-TECHNOLOGY_CATEGORIES: Dict[Technology, FileCategory] = {
+TECHNOLOGY_CATEGORIES: dict[Technology, FileCategory] = {
     Technology.JENKINS: FileCategory.DEVOPS,
     Technology.KUBERNETES: FileCategory.DEVOPS,
     Technology.OPENSHIFT: FileCategory.DEVOPS,
@@ -141,27 +141,27 @@ class Diagnostic:
     message: str
     source: str
     severity: DiagnosticSeverity = DiagnosticSeverity.ERROR
-    line: Optional[int] = None
-    column: Optional[int] = None
-    end_line: Optional[int] = None
-    end_column: Optional[int] = None
-    rule: Optional[str] = None
+    line: int | None = None
+    column: int | None = None
+    end_line: int | None = None
+    end_column: int | None = None
+    rule: str | None = None
     category: DiagnosticCategory = DiagnosticCategory.LINT
     fix_available: bool = False
     fix_kind: FixKind = FixKind.NONE
-    fix_source: Optional[str] = None
+    fix_source: str | None = None
     fix_safety: FixSafety = FixSafety.UNSAFE
-    fix_description: Optional[str] = None
-    details: Optional[str] = None
-    provider: Optional[str] = None
-    provider_priority: Optional[int] = None
-    provider_type: Optional[str] = None  # "native", "opensource", "devworkbench", "manual"
-    rule_origin: Optional[str] = None  # "External engine", "DevWorkBench rule engine"
-    documentation_url: Optional[str] = None
-    help_url: Optional[str] = None
-    contributing_sources: List[str] = field(default_factory=list)
+    fix_description: str | None = None
+    details: str | None = None
+    provider: str | None = None
+    provider_priority: int | None = None
+    provider_type: str | None = None  # "native", "opensource", "devworkbench", "manual"
+    rule_origin: str | None = None  # "External engine", "DevWorkBench rule engine"
+    documentation_url: str | None = None
+    help_url: str | None = None
+    contributing_sources: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "line": self.line,
@@ -195,9 +195,9 @@ class ToolWarning:
     technology: Technology
     tool_name: str
     install_hint: str
-    documentation_url: Optional[str] = None
+    documentation_url: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "technology": self.technology.value,
             "tool_name": self.tool_name,
@@ -215,10 +215,10 @@ class RootCauseCandidate:
     category: str
     confidence: str  # "Likely root cause" or "Possible root cause"
     description: str
-    related_failures: List[str] = field(default_factory=list)
-    line_number: Optional[int] = None
+    related_failures: list[str] = field(default_factory=list)
+    line_number: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
             "source": self.source,
@@ -235,13 +235,13 @@ class Correlation:
     """Represents a deterministic correlation chain across DevOps technologies."""
 
     id: str
-    technology_chain: List[str]
-    root_cause_candidate: Optional[RootCauseCandidate]
+    technology_chain: list[str]
+    root_cause_candidate: RootCauseCandidate | None
     confidence: float  # 0.0 to 1.0
     explanation: str
-    diagnostics: List[Diagnostic] = field(default_factory=list)
+    diagnostics: list[Diagnostic] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "technology_chain": self.technology_chain,
@@ -258,13 +258,13 @@ class BuildLogReport:
 
     source_path: str
     total_lines: int
-    diagnostics: List[Diagnostic] = field(default_factory=list)
-    root_causes: List[RootCauseCandidate] = field(default_factory=list)
-    correlations: List[Correlation] = field(default_factory=list)
+    diagnostics: list[Diagnostic] = field(default_factory=list)
+    root_causes: list[RootCauseCandidate] = field(default_factory=list)
+    correlations: list[Correlation] = field(default_factory=list)
     duration_ms: float = 0.0
     modified_files: int = 0  # Invariant: 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_path": self.source_path,
             "total_lines": self.total_lines,
@@ -285,11 +285,11 @@ class FileDetection:
     technology: Technology
     category: FileCategory
     confidence: float = 1.0
-    details: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    details: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     size_bytes: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "relative_path": self.relative_path,
@@ -309,12 +309,12 @@ class HelmChart:
     name: str
     root_path: str
     relative_root: str
-    chart_yaml: Optional[str] = None
-    values_files: List[str] = field(default_factory=list)
-    template_files: List[str] = field(default_factory=list)
-    helper_files: List[str] = field(default_factory=list)
-    subchart_files: List[str] = field(default_factory=list)
-    other_files: List[str] = field(default_factory=list)
+    chart_yaml: str | None = None
+    values_files: list[str] = field(default_factory=list)
+    template_files: list[str] = field(default_factory=list)
+    helper_files: list[str] = field(default_factory=list)
+    subchart_files: list[str] = field(default_factory=list)
+    other_files: list[str] = field(default_factory=list)
 
     @property
     def total_files(self) -> int:
@@ -328,7 +328,7 @@ class HelmChart:
             + len(self.other_files)
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "root_path": self.root_path,
@@ -352,20 +352,20 @@ class CommandExecution:
     provider_type: str  # "native", "opensource", "devworkbench", "manual"
     provider_name: str
     executable: str
-    args: List[str]
+    args: list[str]
     command: str
     cwd: str
     status: str  # "PASS", "FAIL", "UNAVAILABLE", "SKIPPED", "DEGRADED", "MANUAL_REVIEW"
     duration_ms: float = 0.0
-    exit_code: Optional[int] = None
-    tool_version: Optional[str] = None
+    exit_code: int | None = None
+    tool_version: str | None = None
     stdout: str = ""
     stderr: str = ""
-    error_message: Optional[str] = None
-    fallback_provider: Optional[str] = None
-    unavailable_reason: Optional[str] = None
+    error_message: str | None = None
+    fallback_provider: str | None = None
+    unavailable_reason: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "technology": self.technology,
             "capability": self.capability,
@@ -420,7 +420,7 @@ class ScanSummary:
     checks_degraded: int = 0
     manual_review_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_files_discovered": self.total_files_discovered,
             "supported_files": self.supported_files,
@@ -453,7 +453,7 @@ class ScanError:
     relative_path: str
     error_message: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "relative_path": self.relative_path,
@@ -466,17 +466,17 @@ class ScanResult:
     """Complete structured output of a workspace scan and analysis."""
 
     target_path: str
-    detections: List[FileDetection] = field(default_factory=list)
-    helm_charts: List[HelmChart] = field(default_factory=list)
-    diagnostics: List[Diagnostic] = field(default_factory=list)
-    correlations: List[Correlation] = field(default_factory=list)
-    tool_warnings: List[ToolWarning] = field(default_factory=list)
-    unknown_files: List[FileDetection] = field(default_factory=list)
-    errors: List[ScanError] = field(default_factory=list)
-    executions: List[CommandExecution] = field(default_factory=list)
+    detections: list[FileDetection] = field(default_factory=list)
+    helm_charts: list[HelmChart] = field(default_factory=list)
+    diagnostics: list[Diagnostic] = field(default_factory=list)
+    correlations: list[Correlation] = field(default_factory=list)
+    tool_warnings: list[ToolWarning] = field(default_factory=list)
+    unknown_files: list[FileDetection] = field(default_factory=list)
+    errors: list[ScanError] = field(default_factory=list)
+    executions: list[CommandExecution] = field(default_factory=list)
     summary: ScanSummary = field(default_factory=ScanSummary)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "target_path": self.target_path,
             "summary": self.summary.to_dict(),
@@ -511,9 +511,9 @@ class ResourcePlanItem:
     action: ResourceAction
     target_file: str
     reason: str
-    details: Optional[str] = None
+    details: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "kind": self.kind,
             "name": self.name,
@@ -529,14 +529,14 @@ class ResourcePlanItem:
 class ConversionPlan:
     """Plan detailing how Kubernetes manifests will be converted into a Helm chart."""
 
-    source_paths: List[str]
+    source_paths: list[str]
     target_chart_name: str
     target_dir: str
     existing_chart_detected: bool
-    resource_items: List[ResourcePlanItem] = field(default_factory=list)
+    resource_items: list[ResourcePlanItem] = field(default_factory=list)
     engine_used: str = "internal"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_paths": self.source_paths,
             "target_chart_name": self.target_chart_name,
@@ -554,16 +554,16 @@ class ConversionResult:
     target_dir: str
     chart_name: str
     plan: ConversionPlan
-    created_files: List[str] = field(default_factory=list)
-    updated_files: List[str] = field(default_factory=list)
-    kept_files: List[str] = field(default_factory=list)
-    validation_diagnostics: List[Diagnostic] = field(default_factory=list)
-    executions: List[CommandExecution] = field(default_factory=list)
+    created_files: list[str] = field(default_factory=list)
+    updated_files: list[str] = field(default_factory=list)
+    kept_files: list[str] = field(default_factory=list)
+    validation_diagnostics: list[Diagnostic] = field(default_factory=list)
+    executions: list[CommandExecution] = field(default_factory=list)
     duration_ms: float = 0.0
     status: str = "success"
-    error: Optional[str] = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "target_dir": self.target_dir,
             "chart_name": self.chart_name,
@@ -586,15 +586,15 @@ class CleanupResult:
     source_path: str
     original_yaml: str
     cleaned_yaml: str
-    fields_removed: List[str] = field(default_factory=list)
+    fields_removed: list[str] = field(default_factory=list)
     diff: str = ""
     engine_used: str = "internal"
-    execution: Optional[CommandExecution] = None
+    execution: CommandExecution | None = None
     validation_passed: bool = True
     written: bool = False
-    output_path: Optional[str] = None
+    output_path: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_path": self.source_path,
             "original_yaml": self.original_yaml,
@@ -614,16 +614,16 @@ class FixCandidate:
     """An individual actionable fix proposal for a specific diagnostic."""
 
     path: str
-    rule: Optional[str]
+    rule: str | None
     message: str
     source: str
     fix_kind: FixKind
     fix_safety: FixSafety
     description: str
-    line: Optional[int] = None
-    column: Optional[int] = None
+    line: int | None = None
+    column: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "line": self.line,
@@ -643,9 +643,9 @@ class FixConflict:
 
     path: str
     reason: str
-    candidates: List[FixCandidate] = field(default_factory=list)
+    candidates: list[FixCandidate] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "reason": self.reason,
@@ -657,14 +657,14 @@ class FixConflict:
 class FixPlan:
     """The generated plan of proposed fixes before user confirmation."""
 
-    target_paths: List[str]
-    safe_candidates: List[FixCandidate] = field(default_factory=list)
-    manual_candidates: List[FixCandidate] = field(default_factory=list)
-    conflicts: List[FixConflict] = field(default_factory=list)
-    files_to_modify: List[str] = field(default_factory=list)
-    file_hashes_before: Dict[str, str] = field(default_factory=dict)
+    target_paths: list[str]
+    safe_candidates: list[FixCandidate] = field(default_factory=list)
+    manual_candidates: list[FixCandidate] = field(default_factory=list)
+    conflicts: list[FixConflict] = field(default_factory=list)
+    files_to_modify: list[str] = field(default_factory=list)
+    file_hashes_before: dict[str, str] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "target_paths": self.target_paths,
             "files_to_modify": self.files_to_modify,
@@ -683,13 +683,13 @@ class FixResultItem:
     """Result of applying a fix on a file."""
 
     path: str
-    rule: Optional[str]
+    rule: str | None
     source: str
     status: str  # "applied", "skipped", "failed"
     message: str
-    error: Optional[str] = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "rule": self.rule,
@@ -718,7 +718,7 @@ class FixSummary:
     after_warnings: int = 0
     duration_ms: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "files_analyzed": self.files_analyzed,
             "fix_candidates": self.fix_candidates,
@@ -740,16 +740,16 @@ class FixSummary:
 class FixReport:
     """Comprehensive report detailing fix planning, execution, and validation."""
 
-    target_paths: List[str]
+    target_paths: list[str]
     plan: FixPlan
     summary: FixSummary
-    results: List[FixResultItem] = field(default_factory=list)
-    remaining_diagnostics: List[Diagnostic] = field(default_factory=list)
-    resolved_diagnostics: List[Diagnostic] = field(default_factory=list)
-    engine_states: Dict[str, str] = field(default_factory=dict)
+    results: list[FixResultItem] = field(default_factory=list)
+    remaining_diagnostics: list[Diagnostic] = field(default_factory=list)
+    resolved_diagnostics: list[Diagnostic] = field(default_factory=list)
+    engine_states: dict[str, str] = field(default_factory=dict)
     confirmed: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "target_paths": self.target_paths,
             "confirmed": self.confirmed,

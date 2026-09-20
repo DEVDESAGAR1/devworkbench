@@ -5,11 +5,10 @@ using kubectl-neat if available or internal deterministic resource-aware cleanin
 """
 
 import difflib
-import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import yaml
 
@@ -38,12 +37,12 @@ class ManifestCleaner:
     """Resource-aware cleaner for Kubernetes YAML manifests."""
 
     @staticmethod
-    def _clean_dict(doc: Dict[str, Any], removed_fields: List[str]) -> Dict[str, Any]:
+    def _clean_dict(doc: dict[str, Any], removed_fields: list[str]) -> dict[str, Any]:
         """Recursively clean runtime and internal fields from a Kubernetes manifest dictionary."""
         if not isinstance(doc, dict):
             return doc
 
-        cleaned: Dict[str, Any] = {}
+        cleaned: dict[str, Any] = {}
 
         for k, v in doc.items():
             # Check top-level runtime fields
@@ -52,7 +51,7 @@ class ManifestCleaner:
                 continue
 
             if k == "metadata" and isinstance(v, dict):
-                cleaned_meta: Dict[str, Any] = {}
+                cleaned_meta: dict[str, Any] = {}
                 for m_k, m_v in v.items():
                     if m_k in RUNTIME_METADATA_FIELDS:
                         removed_fields.append(f"metadata.{m_k}")
@@ -86,8 +85,8 @@ class ManifestCleaner:
     @classmethod
     def clean(
         cls,
-        content_or_path: Union[str, Path],
-        write_output_path: Optional[Path] = None,
+        content_or_path: str | Path,
+        write_output_path: Path | None = None,
         use_external_tool: bool = True,
     ) -> CleanupResult:
         """Clean a Kubernetes manifest from file or raw string content."""
@@ -104,10 +103,10 @@ class ManifestCleaner:
         else:
             raw_content = str(content_or_path)
 
-        removed_fields: List[str] = []
+        removed_fields: list[str] = []
         cleaned_yaml = ""
         engine_used = "internal"
-        execution: Optional[CommandExecution] = None
+        execution: CommandExecution | None = None
 
         # Try kubectl-neat if available and requested
         kubectl_neat_bin = shutil.which("kubectl-neat") or shutil.which("kubectl_neat")

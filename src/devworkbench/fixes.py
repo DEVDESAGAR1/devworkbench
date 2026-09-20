@@ -2,14 +2,12 @@
 
 import hashlib
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 from devworkbench.adapters.registry import AdapterRegistry
 from devworkbench.models import (
     FixCandidate,
     FixPlan,
     FixResultItem,
-    Technology,
     ToolState,
 )
 
@@ -31,18 +29,18 @@ class FixEngine:
         plan: FixPlan,
         adapter_registry: AdapterRegistry,
         base_dir: Path = Path("."),
-    ) -> Tuple[List[FixResultItem], Dict[str, str], int]:
+    ) -> tuple[list[FixResultItem], dict[str, str], int]:
         """Apply the planned safe fixes while strictly validating file integrity.
 
         Returns:
             (results, engine_states, files_modified_count)
         """
-        results: List[FixResultItem] = []
-        engine_states: Dict[str, str] = {}
+        results: list[FixResultItem] = []
+        engine_states: dict[str, str] = {}
         files_modified_count = 0
 
         # Group safe candidates by path
-        by_file: Dict[str, List[FixCandidate]] = {}
+        by_file: dict[str, list[FixCandidate]] = {}
         for c in plan.safe_candidates:
             if c.path not in by_file:
                 by_file[c.path] = []
@@ -82,7 +80,6 @@ class FixEngine:
                 continue
 
             initial_hash_before_writes = current_hash
-            file_modified = False
 
             # 2. Execute fixes for this file
             for candidate in candidates:

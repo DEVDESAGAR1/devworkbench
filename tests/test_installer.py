@@ -1,7 +1,6 @@
 """Unit and integration tests for DependencyInstaller, error classification, and setup CLI."""
 
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner

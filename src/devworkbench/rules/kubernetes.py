@@ -1,8 +1,7 @@
 """Kubernetes best-practice and reliability rules."""
 
-import re
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import yaml
 
@@ -11,7 +10,6 @@ from devworkbench.models import (
     DiagnosticCategory,
     DiagnosticSeverity,
     FileDetection,
-    FixSafety,
     Technology,
 )
 from devworkbench.rules.base import BaseRule, RuleMetadata
@@ -43,9 +41,9 @@ class K8sResourceLimitsRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         try:
             docs = list(yaml.safe_load_all(content)) if parsed_data is None else [parsed_data]
             for doc in docs:
@@ -108,9 +106,9 @@ class K8sPrivilegedContainerRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         try:
             docs = list(yaml.safe_load_all(content)) if parsed_data is None else [parsed_data]
             for doc in docs:
@@ -173,9 +171,9 @@ class K8sLatestImageTagRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         try:
             docs = list(yaml.safe_load_all(content)) if parsed_data is None else [parsed_data]
             for doc in docs:
@@ -238,9 +236,9 @@ class K8sMissingProbesRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         try:
             docs = list(yaml.safe_load_all(content)) if parsed_data is None else [parsed_data]
             for doc in docs:

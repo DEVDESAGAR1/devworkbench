@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.execution import CommandRunner
@@ -38,7 +37,7 @@ class PythonAdapter(BaseAdapter):
         return "Ruff / Python AST"
 
     @functools.lru_cache(maxsize=1)
-    def _get_ruff_cmd(self) -> Optional[Tuple[str, ...]]:
+    def _get_ruff_cmd(self) -> tuple[str, ...] | None:
         """Find the executable command to run Ruff."""
         if shutil.which("ruff"):
             return ("ruff",)
@@ -58,7 +57,7 @@ class PythonAdapter(BaseAdapter):
         return None
 
     @functools.lru_cache(maxsize=1)
-    def _get_black_cmd(self) -> Optional[Tuple[str, ...]]:
+    def _get_black_cmd(self) -> tuple[str, ...] | None:
         """Find the executable command to run Black."""
         if shutil.which("black"):
             return ("black",)
@@ -77,7 +76,7 @@ class PythonAdapter(BaseAdapter):
             pass
         return None
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         ruff_cmd = self._get_ruff_cmd()
         black_cmd = self._get_black_cmd()
         if ruff_cmd or black_cmd:
@@ -89,8 +88,8 @@ class PythonAdapter(BaseAdapter):
             documentation_url="https://docs.astral.sh/ruff/",
         )
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         rel_path = detection.relative_path
 
         # 1. AST Syntax Check (Native PSF-2.0 fallback)
@@ -112,7 +111,6 @@ class PythonAdapter(BaseAdapter):
                 )
                 return diagnostics
 
-        ast_error: Optional[SyntaxError] = None
         try:
             ast.parse(code_text, filename=str(file_path))
             ast_duration = (time.perf_counter() - t0) * 1000
@@ -133,7 +131,6 @@ class PythonAdapter(BaseAdapter):
                 )
             )
         except SyntaxError as e:
-            ast_error = e
             ast_duration = (time.perf_counter() - t0) * 1000
             self.record_execution(
                 CommandExecution(
@@ -309,7 +306,7 @@ class PythonAdapter(BaseAdapter):
 
         return diagnostics
 
-    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> Tuple[bool, Optional[str]]:
+    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> tuple[bool, str | None]:
         """Apply native Black or Ruff fix (lint or format) to the target file."""
         if candidate.fix_source == "black" or candidate.rule == "BLACK_FMT":
             black_cmd = self._get_black_cmd()

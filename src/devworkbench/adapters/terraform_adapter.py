@@ -1,11 +1,9 @@
 """Terraform / HCL adapter utilizing Terraform or OpenTofu CLI."""
 
 import functools
-import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.execution import CommandRunner
@@ -34,11 +32,11 @@ class TerraformAdapter(BaseAdapter):
         return "Terraform / OpenTofu"
 
     @functools.lru_cache(maxsize=1)
-    def _get_tf_bin(self) -> Optional[str]:
+    def _get_tf_bin(self) -> str | None:
         """Check for terraform or tofu binary."""
         return shutil.which("terraform") or shutil.which("tofu")
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         bin_path = self._get_tf_bin()
         if bin_path:
             return True, None
@@ -49,8 +47,8 @@ class TerraformAdapter(BaseAdapter):
             documentation_url="https://developer.hashicorp.com/terraform",
         )
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         tf_bin = self._get_tf_bin()
         if not tf_bin:
             return diagnostics
@@ -96,7 +94,7 @@ class TerraformAdapter(BaseAdapter):
 
         return diagnostics
 
-    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> Tuple[bool, Optional[str]]:
+    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> tuple[bool, str | None]:
         """Apply native Terraform or OpenTofu fmt formatting."""
         tf_bin = self._get_tf_bin()
         if not tf_bin:

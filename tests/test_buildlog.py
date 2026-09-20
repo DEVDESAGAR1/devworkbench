@@ -2,10 +2,8 @@
 
 import io
 from pathlib import Path
-import pytest
 
 from devworkbench.buildlog import BuildLogAnalyzer
-from devworkbench.models import DiagnosticSeverity
 
 
 def test_registry_auth_failure_with_cascading_events(tmp_path: Path) -> None:

@@ -1,7 +1,9 @@
 """Tests for `devworkbench tools` and `devworkbench rules` CLI commands."""
 
 import json
+
 from click.testing import CliRunner
+
 from devworkbench.cli import main
 
 

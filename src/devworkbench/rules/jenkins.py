@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from devworkbench.models import (
     Diagnostic,
@@ -44,9 +44,9 @@ class JenkinsCredentialRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         for line_num, line in enumerate(content.splitlines(), start=1):
             if self.RE_SECRET_PATTERN.search(line):
                 diagnostics.append(
@@ -97,9 +97,9 @@ class JenkinsUnsafeShellInterpolationRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         for line_num, line in enumerate(content.splitlines(), start=1):
             if self.RE_UNSAFE_SH.search(line):
                 diagnostics.append(
@@ -146,9 +146,9 @@ class JenkinsMissingTimeoutRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         stage_count = len(re.findall(r"\bstage\s*\(", content))
         if stage_count >= 3 and "timeout" not in content:
             diagnostics.append(
@@ -196,9 +196,9 @@ class JenkinsShellErrorSuppressionRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         for line_num, line in enumerate(content.splitlines(), start=1):
             if self.RE_SUPPRESSED_SH.search(line):
                 diagnostics.append(

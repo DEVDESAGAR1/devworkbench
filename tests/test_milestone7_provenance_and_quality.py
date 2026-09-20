@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main
@@ -14,11 +15,13 @@ from devworkbench.models import (
     FileDetection,
     Technology,
 )
-from devworkbench.rules.registry import RuleRegistry
-from devworkbench.rules.kubernetes import K8sPrivilegedContainerRule, K8sMissingProbesRule
 from devworkbench.rules.docker import DockerLatestImageRule
-from devworkbench.rules.terraform import TerraformHardcodedSecretRule
 from devworkbench.rules.helm import HelmChartMaintainersRule
+from devworkbench.rules.kubernetes import (
+    K8sMissingProbesRule,
+    K8sPrivilegedContainerRule,
+)
+from devworkbench.rules.terraform import TerraformHardcodedSecretRule
 from devworkbench.scanner import Scanner
 
 
@@ -265,7 +268,7 @@ spec:
 def test_rules_cli_human_and_json():
     """Verify 'devworkbench rules' and 'devworkbench rules --json' output rich metadata."""
     runner = CliRunner()
-    
+
     # Human output
     res_human = runner.invoke(main, ["rules"])
     assert res_human.exit_code == 0
@@ -279,7 +282,7 @@ def test_rules_cli_human_and_json():
     data = json.loads(res_json.output)
     assert isinstance(data, list)
     assert len(data) >= 10
-    
+
     k8s001 = next(r for r in data if r["rule_id"] == "K8S001")
     assert k8s001["technology"] == "Kubernetes"
     assert "rationale" in k8s001

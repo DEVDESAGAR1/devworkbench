@@ -1,9 +1,9 @@
 """Registry for managing and evaluating DevOps best-practice rules."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from devworkbench.models import Diagnostic, FileDetection, Technology
+from devworkbench.models import Diagnostic, FileDetection
 from devworkbench.rules.base import BaseRule
 from devworkbench.rules.docker import DockerLatestImageRule
 from devworkbench.rules.helm import HelmChartMaintainersRule, HelmChartMetadataRule
@@ -27,7 +27,7 @@ class RuleRegistry:
     """Registry collecting and evaluating all DevOps best-practice rules."""
 
     def __init__(self) -> None:
-        self.rules: List[BaseRule] = [
+        self.rules: list[BaseRule] = [
             JenkinsCredentialRule(),
             JenkinsUnsafeShellInterpolationRule(),
             JenkinsMissingTimeoutRule(),
@@ -47,11 +47,11 @@ class RuleRegistry:
         self,
         file_path: Path,
         detection: FileDetection,
-        content: Optional[str] = None,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
+        content: str | None = None,
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
         """Evaluate all relevant rules for a file detection."""
-        diagnostics: List[Diagnostic] = []
+        diagnostics: list[Diagnostic] = []
 
         # Find rules matching file technology or related technologies
         relevant_rules = [

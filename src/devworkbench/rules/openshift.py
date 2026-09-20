@@ -1,7 +1,7 @@
 """OpenShift specific best-practice and security rules."""
 
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import yaml
 
@@ -41,9 +41,9 @@ class OpenShiftInsecureRouteRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         try:
             docs = list(yaml.safe_load_all(content)) if parsed_data is None else [parsed_data]
             for doc in docs:

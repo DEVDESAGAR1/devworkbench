@@ -2,18 +2,20 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
-from devworkbench.capabilities.model import CapabilityType, ToolPriority
+from devworkbench.capabilities.model import CapabilityType
 from devworkbench.capabilities.registry import CapabilityRegistry
 from devworkbench.capabilities.resolver import CapabilityResolver
 from devworkbench.cleaner import ManifestCleaner
 from devworkbench.cli import main
 from devworkbench.converter import HelmConverter
-from devworkbench.execution import CommandRunner, redact_secrets_from_args, redact_secrets_from_string
+from devworkbench.execution import (
+    CommandRunner,
+    redact_secrets_from_args,
+    redact_secrets_from_string,
+)
 from devworkbench.models import CheckCoverage, ResourceAction
 from devworkbench.scanner import Scanner
 

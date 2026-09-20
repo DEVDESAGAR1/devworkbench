@@ -2,16 +2,15 @@
 
 import re
 from collections import defaultdict
-from typing import Dict, List, Set, Tuple
 
-from devworkbench.models import Diagnostic, DiagnosticCategory, DiagnosticSeverity
+from devworkbench.models import Diagnostic
 
 
 class DiagnosticDeduplicator:
     """Intelligently deduplicates findings when multiple engines inspect the same file."""
 
     # Priority of sources when duplicate findings exist for the same line/issue
-    SOURCE_PRIORITY: Dict[str, int] = {
+    SOURCE_PRIORITY: dict[str, int] = {
         "ruff": 10,
         "hadolint": 10,
         "actionlint": 10,
@@ -42,14 +41,13 @@ class DiagnosticDeduplicator:
         return cleaned[:40]
 
     @classmethod
-    def deduplicate(cls, diagnostics: List[Diagnostic]) -> List[Diagnostic]:
+    def deduplicate(cls, diagnostics: list[Diagnostic]) -> list[Diagnostic]:
         """Deduplicate diagnostics while preserving the highest-fidelity source and detail."""
         if not diagnostics:
             return []
 
         # Group by (path, line, category, normalized_msg_key)
-        grouped: Dict[Tuple[str, int, str, str], List[Diagnostic]] = defaultdict(list)
-        unpositioned: List[Diagnostic] = []
+        grouped: dict[tuple[str, int, str, str], list[Diagnostic]] = defaultdict(list)
 
         for diag in diagnostics:
             if diag.line is None:
@@ -60,7 +58,7 @@ class DiagnosticDeduplicator:
                 norm_msg = cls._normalize_message_key(diag.message)
                 grouped[(diag.path, diag.line, diag.category.value, norm_msg)].append(diag)
 
-        deduplicated: List[Diagnostic] = []
+        deduplicated: list[Diagnostic] = []
 
         for key, diags in grouped.items():
             if len(diags) == 1:

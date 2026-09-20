@@ -1,6 +1,5 @@
 """Capability Resolver enforcing the Mandatory Tool Selection Hierarchy."""
 
-from typing import Dict, List, Optional
 
 from devworkbench.capabilities.model import (
     CapabilityResult,
@@ -14,11 +13,11 @@ from devworkbench.capabilities.registry import CapabilityRegistry
 class CapabilityResolver:
     """Resolves requested capabilities to the highest-priority available tool provider."""
 
-    def __init__(self, registry: Optional[CapabilityRegistry] = None) -> None:
+    def __init__(self, registry: CapabilityRegistry | None = None) -> None:
         self.registry = registry or CapabilityRegistry()
 
     @staticmethod
-    def _compute_reason(provider: Optional[ToolProvider], priority: ToolPriority) -> str:
+    def _compute_reason(provider: ToolProvider | None, priority: ToolPriority) -> str:
         """Generate human-readable explanation for provider selection."""
         if not provider:
             return "No safe automated provider available locally. Manual review required."
@@ -63,7 +62,7 @@ class CapabilityResolver:
             )
 
         # Handle explicit priority preference
-        target_priority: Optional[ToolPriority] = None
+        target_priority: ToolPriority | None = None
         if pref_lower == "native":
             target_priority = ToolPriority.NATIVE
         elif pref_lower in ["opensource", "open-source", "oss"]:
@@ -119,7 +118,7 @@ class CapabilityResolver:
 
         # Automatic resolution: Strictly traverse priority 1 -> 2 -> 3 -> 4
         # Never choose lower priority when higher priority is available!
-        selected: Optional[ToolProvider] = None
+        selected: ToolProvider | None = None
         for provider in all_providers:
             if provider.is_available:
                 selected = provider
@@ -156,11 +155,11 @@ class CapabilityResolver:
 
     def resolve_all(
         self,
-        preferences: Optional[Dict[str, str]] = None,
-    ) -> Dict[CapabilityType, CapabilityResult]:
+        preferences: dict[str, str] | None = None,
+    ) -> dict[CapabilityType, CapabilityResult]:
         """Resolve all registered capabilities against configuration preferences."""
         prefs = preferences or {}
-        results: Dict[CapabilityType, CapabilityResult] = {}
+        results: dict[CapabilityType, CapabilityResult] = {}
 
         # Collect unique capabilities
         all_caps = {p.capability for p in self.registry.providers}

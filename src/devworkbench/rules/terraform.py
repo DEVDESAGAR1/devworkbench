@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from devworkbench.models import (
     Diagnostic,
@@ -43,9 +43,9 @@ class TerraformHardcodedSecretRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         for line_num, line in enumerate(content.splitlines(), start=1):
             if self.RE_SECRET_PATTERN.search(line):
                 diagnostics.append(

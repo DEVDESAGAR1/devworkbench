@@ -3,7 +3,6 @@
 import hashlib
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set
 
 from devworkbench.models import (
     Diagnostic,
@@ -29,14 +28,14 @@ class FixPlanner:
     @classmethod
     def create_plan(
         cls,
-        diagnostics: List[Diagnostic],
-        target_paths: List[str],
+        diagnostics: list[Diagnostic],
+        target_paths: list[str],
         base_dir: Path = Path("."),
     ) -> FixPlan:
         """Analyze diagnostics, classify candidates, detect conflicts, and generate a FixPlan."""
-        safe_candidates: List[FixCandidate] = []
-        manual_candidates: List[FixCandidate] = []
-        conflicts: List[FixConflict] = []
+        safe_candidates: list[FixCandidate] = []
+        manual_candidates: list[FixCandidate] = []
+        conflicts: list[FixConflict] = []
 
         # 1. Categorize diagnostics into safe candidates vs manual review
         for diag in diagnostics:
@@ -65,12 +64,12 @@ class FixPlanner:
                 manual_candidates.append(cand)
 
         # 2. Conflict Detection: group safe candidates by file path
-        by_file: Dict[str, List[FixCandidate]] = defaultdict(list)
+        by_file: dict[str, list[FixCandidate]] = defaultdict(list)
         for c in safe_candidates:
             by_file[c.path].append(c)
 
-        valid_safe_candidates: List[FixCandidate] = []
-        files_to_modify: Set[str] = set()
+        valid_safe_candidates: list[FixCandidate] = []
+        files_to_modify: set[str] = set()
 
         for path_str, file_candidates in by_file.items():
             # Check for multi-engine collision: different distinct external tool sources
@@ -102,7 +101,7 @@ class FixPlanner:
                 files_to_modify.add(path_str)
 
         # 3. Capture SHA-256 pre-modification fingerprints
-        file_hashes: Dict[str, str] = {}
+        file_hashes: dict[str, str] = {}
         for p_str in files_to_modify:
             # Resolve relative or absolute path
             p_obj = Path(p_str)

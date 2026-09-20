@@ -1,13 +1,9 @@
 """Unit and integration tests for the Mandatory Tool Selection Hierarchy."""
 
-from pathlib import Path
-from typing import Dict, List, Optional
-from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from devworkbench.capabilities.model import (
-    CapabilityResult,
     CapabilityType,
     ToolPriority,
     ToolProvider,

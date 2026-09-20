@@ -1,6 +1,6 @@
 """Runner and execution orchestrator for DevWorkBench."""
 
-from typing import Any, List, Optional
+from typing import Any
 
 from devworkbench.buildlog import BuildLogAnalyzer
 from devworkbench.configuration import ScanConfig
@@ -12,16 +12,16 @@ from devworkbench.scanner import Scanner
 class Runner:
     """Orchestrates scan execution, build log analysis, fix execution, and reporting pipelines."""
 
-    def __init__(self, config: Optional[ScanConfig] = None) -> None:
+    def __init__(self, config: ScanConfig | None = None) -> None:
         self.config = config or ScanConfig()
         self.scanner = Scanner(config=self.config)
         self.build_analyzer = BuildLogAnalyzer()
 
     def run_scan(
         self,
-        target_paths: List[str],
+        target_paths: list[str],
         output_format: str = "human",
-        output_file: Optional[str] = None,
+        output_file: str | None = None,
         verbose: bool = False,
     ) -> ScanResult:
         """Run scan across one or more target paths and emit reports."""
@@ -43,12 +43,12 @@ class Runner:
 
     def run_fix(
         self,
-        target_paths: List[str],
-        plan: Optional[FixPlan] = None,
+        target_paths: list[str],
+        plan: FixPlan | None = None,
         dry_run: bool = False,
         confirmed: bool = True,
         output_format: str = "human",
-        output_file: Optional[str] = None,
+        output_file: str | None = None,
     ) -> FixReport:
         """Run fix pipeline (dry run or confirmed execution) and emit reports."""
         report = self.scanner.run_fix(
@@ -79,8 +79,8 @@ class Runner:
         self,
         log_path: str,
         output_format: str = "human",
-        output_file: Optional[str] = None,
-        stream: Optional[Any] = None,
+        output_file: str | None = None,
+        stream: Any | None = None,
     ) -> BuildLogReport:
         """Analyze a build log file or stream."""
         if stream is not None:
@@ -105,14 +105,14 @@ class Runner:
     def run_clean(
         self,
         target_path_or_content: str,
-        write_output_path: Optional[str] = None,
+        write_output_path: str | None = None,
         output_format: str = "human",
-        output_file: Optional[str] = None,
+        output_file: str | None = None,
     ) -> Any:
         """Clean Kubernetes manifest and output result in requested format."""
         from pathlib import Path
+
         from devworkbench.cleaner import ManifestCleaner
-        from devworkbench.models import CleanupResult
 
         out_path = Path(write_output_path) if write_output_path else None
         result = ManifestCleaner.clean(
@@ -136,17 +136,18 @@ class Runner:
 
     def run_convert(
         self,
-        input_paths: List[str],
+        input_paths: list[str],
         target_dir: str,
-        chart_name: Optional[str] = None,
+        chart_name: str | None = None,
         to_format: str = "helm",
         dry_run: bool = False,
         force: bool = False,
         output_format: str = "human",
-        output_file: Optional[str] = None,
+        output_file: str | None = None,
     ) -> Any:
         """Convert Kubernetes manifests to Helm chart."""
         from pathlib import Path
+
         from devworkbench.converter import HelmConverter
 
         path_objs = [Path(p) for p in input_paths]

@@ -1,7 +1,6 @@
 """Unit tests for the Jenkins adapter and pipeline rules."""
 
 from pathlib import Path
-import pytest
 
 from devworkbench.adapters.jenkins_adapter import JenkinsAdapter
 from devworkbench.models import (

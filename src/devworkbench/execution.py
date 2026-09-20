@@ -4,14 +4,12 @@ Provides execution isolation, UTF-8 safety, timeout enforcement, secret redactio
 and structured command execution tracking.
 """
 
-import os
 import re
 import shutil
 import subprocess
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from devworkbench.models import CommandExecution
 
@@ -34,9 +32,9 @@ def redact_secrets_from_string(text: Any) -> str:
     return redacted
 
 
-def redact_secrets_from_args(args: List[str]) -> List[str]:
+def redact_secrets_from_args(args: list[str]) -> list[str]:
     """Redact sensitive arguments safely."""
-    redacted_args: List[str] = []
+    redacted_args: list[str] = []
     skip_next = False
 
     sensitive_flags = {"--password", "--token", "--secret", "--api-key", "--access-key", "-p"}
@@ -70,17 +68,17 @@ class CommandRunner:
     @staticmethod
     def run_command(
         executable: str,
-        args: List[str],
+        args: list[str],
         technology: str,
         capability: str,
         provider_type: str,
         provider_name: str,
-        tool_version: Optional[str] = None,
-        cwd: Optional[Path] = None,
-        env: Optional[Dict[str, str]] = None,
+        tool_version: str | None = None,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
         timeout_seconds: float = 30.0,
-        stdin_content: Optional[str] = None,
-        fallback_provider: Optional[str] = None,
+        stdin_content: str | None = None,
+        fallback_provider: str | None = None,
     ) -> CommandExecution:
         """Run an external CLI tool securely and record complete execution telemetry."""
         cwd_path = cwd or Path.cwd()

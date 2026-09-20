@@ -1,6 +1,5 @@
 """Registry collecting all error signatures for build log analysis."""
 
-from typing import List, Optional
 
 from devworkbench.signatures.base import BaseSignature, SignatureMatch
 from devworkbench.signatures.docker_sig import get_docker_signatures
@@ -20,7 +19,7 @@ class SignatureRegistry:
     """
 
     def __init__(self) -> None:
-        self.signatures: List[BaseSignature] = []
+        self.signatures: list[BaseSignature] = []
         # Specific domain error signatures first
         self.signatures.extend(get_registry_signatures())
         self.signatures.extend(get_openshift_signatures())
@@ -30,7 +29,7 @@ class SignatureRegistry:
         self.signatures.extend(get_kubernetes_signatures())
         self.signatures.extend(get_jenkins_signatures())
 
-    def match_line(self, line: str, line_number: int) -> Optional[SignatureMatch]:
+    def match_line(self, line: str, line_number: int) -> SignatureMatch | None:
         """Match line against all registered signatures."""
         for sig in self.signatures:
             match = sig.match_line(line, line_number)

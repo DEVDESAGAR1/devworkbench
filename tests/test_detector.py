@@ -1,7 +1,6 @@
 """Unit tests for the DetectionEngine."""
 
 from pathlib import Path
-import pytest
 
 from devworkbench.detector import DetectionEngine
 from devworkbench.models import FileCategory, Technology
@@ -36,7 +35,7 @@ def test_detect_helm_template_vs_k8s(tmp_path: Path) -> None:
     helm_tmpl = tmp_path / "templates" / "service.yaml"
     helm_tmpl.parent.mkdir(parents=True)
     helm_tmpl.write_text("apiVersion: v1\nkind: Service\nmetadata:\n  name: {{ .Release.Name }}")
-    
+
     # When scanned in a Helm template context
     det = DetectionEngine.detect_file(
         helm_tmpl,

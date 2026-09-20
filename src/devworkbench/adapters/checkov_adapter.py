@@ -2,11 +2,9 @@
 
 import functools
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.models import (
@@ -41,7 +39,7 @@ class CheckovAdapter(BaseAdapter):
         return detection.technology in self.SUPPORTED_TECHS
 
     @functools.lru_cache(maxsize=1)
-    def _get_checkov_cmd(self) -> Optional[Tuple[str, ...]]:
+    def _get_checkov_cmd(self) -> tuple[str, ...] | None:
         if self.find_tool("checkov"):
             return ("checkov",)
         try:
@@ -59,7 +57,7 @@ class CheckovAdapter(BaseAdapter):
             pass
         return None
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         cmd = self._get_checkov_cmd()
         if cmd:
             return True, None
@@ -70,8 +68,8 @@ class CheckovAdapter(BaseAdapter):
             documentation_url="https://www.checkov.io/",
         )
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         cmd = self._get_checkov_cmd()
         if not cmd:
             return diagnostics

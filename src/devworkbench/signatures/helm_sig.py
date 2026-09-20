@@ -1,10 +1,10 @@
 """Helm deployment and template error signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_helm_signatures() -> List[BaseSignature]:
+def get_helm_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="HELM-001",

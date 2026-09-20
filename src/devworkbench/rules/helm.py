@@ -1,7 +1,7 @@
 """Helm chart best-practice and structure rules."""
 
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import yaml
 
@@ -40,9 +40,9 @@ class HelmChartMetadataRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         if file_path.name.lower() in ["chart.yaml", "chart.yml"]:
             try:
                 data = yaml.safe_load(content)
@@ -109,9 +109,9 @@ class HelmChartMaintainersRule(BaseRule):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         if file_path.name.lower() in ["chart.yaml", "chart.yml"]:
             try:
                 data = yaml.safe_load(content)

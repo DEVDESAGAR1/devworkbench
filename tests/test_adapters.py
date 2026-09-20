@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
 
 from devworkbench.adapters.helm_adapter import HelmAdapter
 from devworkbench.adapters.python_adapter import PythonAdapter

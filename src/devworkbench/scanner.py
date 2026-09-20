@@ -4,7 +4,6 @@ import fnmatch
 import os
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 from devworkbench.adapters.registry import AdapterRegistry
 from devworkbench.configuration import ScanConfig
@@ -14,7 +13,6 @@ from devworkbench.detector import DetectionEngine
 from devworkbench.fixes import FixEngine
 from devworkbench.models import (
     CheckCoverage,
-    CommandExecution,
     Diagnostic,
     DiagnosticSeverity,
     FileDetection,
@@ -26,7 +24,6 @@ from devworkbench.models import (
     ScanResult,
     ScanSummary,
     Technology,
-    ToolWarning,
 )
 from devworkbench.planner import FixPlanner
 from devworkbench.rules.registry import RuleRegistry
@@ -35,7 +32,7 @@ from devworkbench.rules.registry import RuleRegistry
 class Scanner:
     """Recursively scans workspaces, discovers Helm projects, and analyzes DevOps/developer files."""
 
-    def __init__(self, config: Optional[ScanConfig] = None) -> None:
+    def __init__(self, config: ScanConfig | None = None) -> None:
         self.config = config or ScanConfig()
         self.adapter_registry = AdapterRegistry()
         self.rule_registry = RuleRegistry()
@@ -63,9 +60,9 @@ class Scanner:
                 return True
         return False
 
-    def _find_helm_chart_roots(self, base_path: Path) -> Dict[Path, str]:
+    def _find_helm_chart_roots(self, base_path: Path) -> dict[Path, str]:
         """Pre-scan to discover all Helm chart root directories in the workspace."""
-        helm_roots: Dict[Path, str] = {}
+        helm_roots: dict[Path, str] = {}
         try:
             for root, dirs, files in os.walk(base_path, followlinks=self.config.follow_symlinks):
                 root_path = Path(root)
@@ -91,18 +88,18 @@ class Scanner:
     def scan_path(
         self,
         target_path: Path,
-        base_context_path: Optional[Path] = None,
-    ) -> Tuple[List[FileDetection], List[HelmChart], List[Diagnostic], List[FileDetection], List[ScanError]]:
+        base_context_path: Path | None = None,
+    ) -> tuple[list[FileDetection], list[HelmChart], list[Diagnostic], list[FileDetection], list[ScanError]]:
         """Scan a single path (either a single file or a directory)."""
         base_ctx = base_context_path or (target_path.parent if target_path.is_file() else target_path)
         base_ctx_resolved = base_ctx.resolve()
         target_path_resolved = target_path.resolve()
 
-        detections: List[FileDetection] = []
-        unknown_files: List[FileDetection] = []
-        errors: List[ScanError] = []
-        diagnostics: List[Diagnostic] = []
-        helm_charts_map: Dict[Path, HelmChart] = {}
+        detections: list[FileDetection] = []
+        unknown_files: list[FileDetection] = []
+        errors: list[ScanError] = []
+        diagnostics: list[Diagnostic] = []
+        helm_charts_map: dict[Path, HelmChart] = {}
 
         # 1. Target is a single file
         if target_path_resolved.is_file():
@@ -160,7 +157,7 @@ class Scanner:
                 relative_root=rel_root if rel_root != "." else root_p.name,
             )
 
-        visited_inodes: Set[Tuple[int, int]] = set()
+        visited_inodes: set[tuple[int, int]] = set()
 
         for root, dirs, files in os.walk(target_path_resolved, followlinks=self.config.follow_symlinks):
             root_path = Path(root)
@@ -184,7 +181,7 @@ class Scanner:
                 if not self._should_ignore_dir(d, rel_dir / d)
             ]
 
-            current_helm_root: Optional[Path] = None
+            current_helm_root: Path | None = None
             for hr in helm_roots:
                 if root_path == hr or hr in root_path.parents:
                     current_helm_root = hr
@@ -279,7 +276,7 @@ class Scanner:
                         ScanError(
                             path=str(file_path),
                             relative_path=str(rel_file_path),
-                            error_message=f"Unexpected error: {str(e)}",
+                            error_message=f"Unexpected error: {e!s}",
                         )
                     )
 
@@ -301,20 +298,20 @@ class Scanner:
 
         return detections, list(helm_charts_map.values()), diagnostics, unknown_files, errors
 
-    def scan_multiple(self, target_paths: List[str]) -> ScanResult:
+    def scan_multiple(self, target_paths: list[str]) -> ScanResult:
         """Scan multiple files and/or directories."""
         start_time = time.perf_counter()
 
         if not target_paths:
             target_paths = ["."]
 
-        all_detections: List[FileDetection] = []
-        all_helm_charts: List[HelmChart] = []
-        all_diagnostics: List[Diagnostic] = []
-        all_unknown_files: List[FileDetection] = []
-        all_errors: List[ScanError] = []
+        all_detections: list[FileDetection] = []
+        all_helm_charts: list[HelmChart] = []
+        all_diagnostics: list[Diagnostic] = []
+        all_unknown_files: list[FileDetection] = []
+        all_errors: list[ScanError] = []
 
-        seen_paths: Set[str] = set()
+        seen_paths: set[str] = set()
 
         # Clear executions on all adapters before scan
         for adapter in self.adapter_registry.adapters:
@@ -341,7 +338,7 @@ class Scanner:
         deduplicated_diags = DiagnosticDeduplicator.deduplicate(all_diagnostics)
 
         # 2. Filter out disabled rules and apply severity overrides
-        final_diagnostics: List[Diagnostic] = []
+        final_diagnostics: list[Diagnostic] = []
         for d in deduplicated_diags:
             if d.rule and d.rule in self.config.disabled_rules:
                 continue
@@ -429,7 +426,7 @@ class Scanner:
         """Scan a single target path."""
         return self.scan_multiple([target_path_str])
 
-    def plan_fix(self, target_paths: List[str]) -> Tuple[ScanResult, FixPlan]:
+    def plan_fix(self, target_paths: list[str]) -> tuple[ScanResult, FixPlan]:
         """Perform initial scan and build fix plan."""
         scan_res = self.scan_multiple(target_paths)
         plan = FixPlanner.create_plan(
@@ -440,8 +437,8 @@ class Scanner:
 
     def run_fix(
         self,
-        target_paths: List[str],
-        plan: Optional[FixPlan] = None,
+        target_paths: list[str],
+        plan: FixPlan | None = None,
         dry_run: bool = False,
         confirmed: bool = True,
     ) -> FixReport:
@@ -496,7 +493,6 @@ class Scanner:
         # Post-Fix Validation Scan
         post_scan = self.scan_multiple(target_paths)
 
-        before_keys = {(d.path, d.line, d.rule, d.message) for d in initial_scan.diagnostics}
         after_keys = {(d.path, d.line, d.rule, d.message) for d in post_scan.diagnostics}
 
         resolved_diagnostics = [d for d in initial_scan.diagnostics if (d.path, d.line, d.rule, d.message) not in after_keys]

@@ -1,10 +1,10 @@
 """Jenkins pipeline runtime error signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_jenkins_signatures() -> List[BaseSignature]:
+def get_jenkins_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="JENK-001",

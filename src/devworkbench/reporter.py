@@ -4,10 +4,9 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from rich.console import Console
-from rich.table import Table
 from rich.tree import Tree
 
 from devworkbench.adapters.base import BaseAdapter
@@ -22,7 +21,6 @@ from devworkbench.models import (
     FixCandidate,
     FixPlan,
     FixReport,
-    HelmChart,
     ScanResult,
     Technology,
     ToolWarning,
@@ -33,7 +31,7 @@ from devworkbench.rules.base import BaseRule
 class HumanReporter:
     """Renders scan, analysis, build-log, tools, and rules results in a clear terminal format."""
 
-    def __init__(self, console: Optional[Console] = None) -> None:
+    def __init__(self, console: Console | None = None) -> None:
         enc = (getattr(sys.stdout, "encoding", "") or "").lower()
         self.supports_unicode = "utf" in enc
         if console:
@@ -68,18 +66,18 @@ class HumanReporter:
         self.console.print(f"Scanning: [bold]{result.target_path}[/bold]\n")
 
         # Group detections by Technology
-        grouped_detections: Dict[Technology, List[FileDetection]] = defaultdict(list)
+        grouped_detections: dict[Technology, list[FileDetection]] = defaultdict(list)
         for det in result.detections:
             grouped_detections[det.technology].append(det)
 
         # Group diagnostics by Technology
-        path_to_tech: Dict[str, Technology] = {
+        path_to_tech: dict[str, Technology] = {
             det.relative_path: det.technology for det in result.detections
         }
         for hc in result.helm_charts:
             path_to_tech[hc.relative_root] = Technology.HELM
 
-        grouped_diags: Dict[Technology, List[Diagnostic]] = defaultdict(list)
+        grouped_diags: dict[Technology, list[Diagnostic]] = defaultdict(list)
         for diag in result.diagnostics:
             tech = path_to_tech.get(diag.path)
             if not tech:
@@ -115,7 +113,7 @@ class HumanReporter:
                     tech = Technology.UNKNOWN
             grouped_diags[tech].append(diag)
 
-        tool_warn_by_tech: Dict[Technology, List[ToolWarning]] = defaultdict(list)
+        tool_warn_by_tech: dict[Technology, list[ToolWarning]] = defaultdict(list)
         for tw in result.tool_warnings:
             tool_warn_by_tech[tw.technology].append(tw)
 
@@ -196,7 +194,7 @@ class HumanReporter:
                 cat_str = f" ({diag.category.value})" if diag.category else ""
                 self.console.print(f"  {icon} [bold]{diag.path}{loc_str}[/bold]{rule_str}{cat_str}")
                 self.console.print(f"    {diag.message}")
-                
+
                 # Provider Provenance & Lineage
                 prov_str = ""
                 if diag.provider:
@@ -206,7 +204,7 @@ class HumanReporter:
                     prov_str = f"source: {diag.provider} {p_badge}".strip()
                 else:
                     prov_str = f"source: {diag.source}"
-                
+
                 if diag.rule_origin:
                     prov_str += f" | {diag.rule_origin}"
                 self.console.print(f"    [dim]{prov_str}[/dim]")
@@ -252,18 +250,18 @@ class HumanReporter:
         if summary.errors_count > 0:
             self.console.print(f"Errors:            [bold red]{summary.errors_count}[/bold red]")
         else:
-            self.console.print(f"Errors:            [green]0[/green]")
+            self.console.print("Errors:            [green]0[/green]")
 
         if summary.warnings_count > 0:
             self.console.print(f"Warnings:          [bold yellow]{summary.warnings_count}[/bold yellow]")
         else:
-            self.console.print(f"Warnings:          [green]0[/green]")
+            self.console.print("Warnings:          [green]0[/green]")
 
         self.console.print(f"Files with issues: [bold]{summary.files_with_issues}[/bold]")
         if summary.root_causes_count > 0:
             self.console.print(f"Correlations:      [bold cyan]{summary.root_causes_count}[/bold cyan]")
         self.console.print(f"Files discovered:  {summary.total_files_discovered}")
-        
+
         cov_val = summary.coverage.value if hasattr(summary.coverage, "value") else str(summary.coverage)
         cov_color = "green" if cov_val == "FULL" else ("yellow" if cov_val == "PARTIAL" else "red")
         self.console.print(f"Tool Coverage:     [bold {cov_color}]{cov_val}[/bold {cov_color}] (Passed: {summary.checks_passed}, Failed: {summary.checks_failed}, Unavailable: {summary.checks_unavailable})")
@@ -398,7 +396,7 @@ class HumanReporter:
         self.console.print(f"Analysis duration: [dim]{report.duration_ms:.2f} ms[/dim]")
         self.console.print("\n[bold green]No files modified.[/bold green]\n")
 
-    def report_tools_dashboard(self, adapters: List[BaseAdapter]) -> None:
+    def report_tools_dashboard(self, adapters: list[BaseAdapter]) -> None:
         """Print dashboard of available vs missing analysis engines."""
         self.console.print("\n[bold cyan]DevWorkBench - Analysis Engines Status[/bold cyan]")
         self.console.print("[dim]---------------------------------------------[/dim]\n")
@@ -419,7 +417,7 @@ class HumanReporter:
 
         self.console.print("\n[dim]---------------------------------------------[/dim]\n")
 
-    def report_capabilities_dashboard(self, results: Dict[Any, Any]) -> None:
+    def report_capabilities_dashboard(self, results: dict[Any, Any]) -> None:
         """Print dashboard of capabilities, priority selection, and provider availability."""
         self.console.print("\n[bold cyan]DevWorkBench - Capability Providers & Hierarchy[/bold cyan]")
         self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
@@ -443,7 +441,7 @@ class HumanReporter:
             else:
                 status_icon = self.icon_warn
                 status_color = "yellow"
-                provider_desc = f"[bold yellow]Manual Review Required[/bold yellow] - [dim]No automated provider[/dim]"
+                provider_desc = "[bold yellow]Manual Review Required[/bold yellow] - [dim]No automated provider[/dim]"
 
             priority_badge = f"[bold {status_color}]P{p_val}:{p_name}[/bold {status_color}]"
             self.console.print(f"  {status_icon} [bold cyan]{cap_name:<30}[/bold cyan] {priority_badge:<25} {provider_desc}")
@@ -537,7 +535,7 @@ class HumanReporter:
 
         self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
 
-    def report_rules_catalog(self, rules: List[BaseRule], technology_filter: Optional[str] = None) -> None:
+    def report_rules_catalog(self, rules: list[BaseRule], technology_filter: str | None = None) -> None:
         """Print catalog of all built-in DevOps best-practice rules."""
         self.console.print("\n[bold cyan]DevWorkBench - DevOps Best-Practice Rules[/bold cyan]")
         self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
@@ -553,7 +551,7 @@ class HumanReporter:
             self.console.print(f"    [bold]Description:[/bold] {meta.description}")
             if meta.rationale:
                 self.console.print(f"    [dim]Rationale:   {meta.rationale}[/dim]")
-            
+
             safety_val = meta.fix_safety.value if hasattr(meta.fix_safety, "value") else str(meta.fix_safety)
             autofix_str = "Yes" if meta.autofix_supported else "No"
             self.console.print(f"    [dim]Fix Safety:  {safety_val} (Autofix: {autofix_str})[/dim]")
@@ -584,7 +582,7 @@ class HumanReporter:
         if plan.safe_candidates:
             self.console.print("[bold]Planned changes:[/bold]\n")
             # Group by file
-            by_file: Dict[str, List[FixCandidate]] = {}
+            by_file: dict[str, list[FixCandidate]] = {}
             for c in plan.safe_candidates:
                 if c.path not in by_file:
                     by_file[c.path] = []
@@ -604,7 +602,7 @@ class HumanReporter:
             for conf in plan.conflicts:
                 self.console.print(f"  {self.icon_warn} [bold]{conf.path}[/bold]")
                 self.console.print(f"    [dim]{conf.reason}[/dim]")
-                self.console.print(f"    [italic]Automatic modification skipped. Manual review required.[/italic]\n")
+                self.console.print("    [italic]Automatic modification skipped. Manual review required.[/italic]\n")
 
         if dry_run:
             self.console.print("[dim]---------------------------------------------[/dim]")
@@ -624,7 +622,7 @@ class HumanReporter:
         if sum_data.applied_count > 0:
             self.console.print(f"  {self.icon_ok} [bold green]{sum_data.applied_count} fixes applied[/bold green]")
         else:
-            self.console.print(f"  [dim]0 fixes applied[/dim]")
+            self.console.print("  [dim]0 fixes applied[/dim]")
 
         if sum_data.failed_count > 0:
             self.console.print(f"  {self.icon_err} [bold red]{sum_data.failed_count} fixes failed[/bold red]")
@@ -644,7 +642,7 @@ class HumanReporter:
         if sum_data.remaining_count > 0:
             self.console.print(f"  {self.icon_warn} [bold yellow]{sum_data.remaining_count} issues remain[/bold yellow]")
         else:
-            self.console.print(f"  [bold green]0 issues remain[/bold green]")
+            self.console.print("  [bold green]0 issues remain[/bold green]")
         self.console.print()
 
         self.console.print("[bold]After:[/bold]")

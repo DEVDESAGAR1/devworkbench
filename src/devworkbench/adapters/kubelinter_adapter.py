@@ -1,10 +1,7 @@
 """Kubernetes schema and best-practice adapter utilizing KubeLinter and kubeconform."""
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.execution import CommandRunner
@@ -29,7 +26,7 @@ class KubeLinterAdapter(BaseAdapter):
     def name(self) -> str:
         return "KubeLinter / kubeconform"
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         if self.find_tool("kube-linter") or self.find_tool("kubeconform"):
             return True, None
         return False, ToolWarning(
@@ -39,8 +36,8 @@ class KubeLinterAdapter(BaseAdapter):
             documentation_url="https://github.com/stackrox/kube-linter",
         )
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         rel_path = detection.relative_path
 
         # 1. Run kubeconform for OpenAPI / JSONSchema validation if available

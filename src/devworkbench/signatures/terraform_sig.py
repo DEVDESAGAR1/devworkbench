@@ -1,10 +1,10 @@
 """Terraform runtime error signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_terraform_signatures() -> List[BaseSignature]:
+def get_terraform_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="TF-001",

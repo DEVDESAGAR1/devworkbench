@@ -1,10 +1,10 @@
 """Registry authentication and image storage signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_registry_signatures() -> List[BaseSignature]:
+def get_registry_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="REG-001",

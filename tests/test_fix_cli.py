@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main

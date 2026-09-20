@@ -15,15 +15,15 @@ from devworkbench.capabilities.registry import CapabilityRegistry
 from devworkbench.capabilities.resolver import CapabilityResolver
 
 __all__ = [
-    "ToolPriority",
-    "CapabilityType",
-    "InstallMethod",
-    "InstallationErrorKind",
-    "ToolProvider",
-    "CapabilityResult",
-    "InstallationResult",
-    "SetupReport",
     "CapabilityRegistry",
     "CapabilityResolver",
+    "CapabilityResult",
+    "CapabilityType",
     "DependencyInstaller",
+    "InstallMethod",
+    "InstallationErrorKind",
+    "InstallationResult",
+    "SetupReport",
+    "ToolPriority",
+    "ToolProvider",
 ]

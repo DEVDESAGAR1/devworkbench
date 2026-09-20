@@ -1,20 +1,13 @@
 """Milestone 8: Production readiness, full audit, and release verification tests."""
 
-import os
 import subprocess
-import sys
 import zipfile
 from pathlib import Path
-import pytest
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main
-from devworkbench.scanner import Scanner
 from devworkbench.models import Diagnostic, DiagnosticSeverity
-from devworkbench.adapters.registry import AdapterRegistry
-from devworkbench.capabilities.resolver import CapabilityResolver
-from devworkbench.capabilities.registry import CapabilityRegistry
-from devworkbench.rules.registry import RuleRegistry
 
 
 def test_package_metadata_and_version():

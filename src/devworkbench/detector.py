@@ -1,13 +1,10 @@
 """Technology and file type detection engine for DevWorkBench."""
 
-import os
 import re
 from pathlib import Path
-from typing import Optional, Tuple
 
 from devworkbench.configuration import MAX_HEADER_INSPECTION_BYTES
 from devworkbench.models import (
-    TECHNOLOGY_CATEGORIES,
     FileCategory,
     FileDetection,
     Technology,
@@ -68,7 +65,6 @@ class DetectionEngine:
         filename = file_path.name
         filename_lower = filename.lower()
         suffix_lower = file_path.suffix.lower()
-        rel_path_str = str(relative_path).replace("\\", "/")
         rel_parts_lower = [p.lower() for p in relative_path.parts]
 
         file_size = 0

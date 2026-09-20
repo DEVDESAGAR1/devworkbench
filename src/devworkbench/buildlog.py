@@ -3,9 +3,8 @@
 import sys
 import time
 from collections import defaultdict
-from io import TextIOBase
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 from devworkbench.correlation import CorrelationEngine
 from devworkbench.models import (
@@ -31,8 +30,8 @@ class BuildLogAnalyzer:
         """Streamingly parse build log lines without loading the whole file into memory."""
         start_time = time.perf_counter()
 
-        matches_by_sig: Dict[str, List[SignatureMatch]] = defaultdict(list)
-        all_matches: List[SignatureMatch] = []
+        matches_by_sig: dict[str, list[SignatureMatch]] = defaultdict(list)
+        all_matches: list[SignatureMatch] = []
         total_lines = 0
 
         # Handle file/StringIO/Click stream objects safely
@@ -53,7 +52,7 @@ class BuildLogAnalyzer:
                 all_matches.append(match)
 
         # 1. Deduplicate & group matches into diagnostics
-        diagnostics: List[Diagnostic] = []
+        diagnostics: list[Diagnostic] = []
         for sig_id, match_list in matches_by_sig.items():
             first_match = match_list[0]
             count = len(match_list)
@@ -73,7 +72,7 @@ class BuildLogAnalyzer:
             )
 
         # 2. Identify Root Cause Candidates conservatively
-        root_causes: List[RootCauseCandidate] = []
+        root_causes: list[RootCauseCandidate] = []
         root_matches = [m for m in all_matches if m.is_root_cause_candidate]
         cascaded_symptoms = [m for m in all_matches if not m.is_root_cause_candidate]
 
@@ -85,7 +84,7 @@ class BuildLogAnalyzer:
             seen_root_sigs.add(rm.signature_id)
 
             # Collect downstream cascaded failures that occurred after this root cause
-            related: List[str] = []
+            related: list[str] = []
             for sm in cascaded_symptoms:
                 if sm.line_number >= rm.line_number:
                     related.append(f"Line {sm.line_number}: {sm.message}")

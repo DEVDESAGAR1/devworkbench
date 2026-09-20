@@ -1,12 +1,9 @@
 """Helm adapter utilizing the Helm CLI for chart linting and template rendering."""
 
-import os
 import re
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.execution import CommandRunner
@@ -14,7 +11,6 @@ from devworkbench.models import (
     Diagnostic,
     DiagnosticCategory,
     DiagnosticSeverity,
-    FileDetection,
     HelmChart,
     Technology,
     ToolWarning,
@@ -32,7 +28,7 @@ class HelmAdapter(BaseAdapter):
     def name(self) -> str:
         return "Helm"
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         if self.find_tool("helm"):
             return True, None
         return False, ToolWarning(
@@ -43,9 +39,9 @@ class HelmAdapter(BaseAdapter):
         )
 
     def analyze_project(
-        self, project_path: Path, chart: Optional[HelmChart] = None
-    ) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        self, project_path: Path, chart: HelmChart | None = None
+    ) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         if not self.find_tool("helm") or not chart:
             return diagnostics
 

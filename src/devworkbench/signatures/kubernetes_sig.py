@@ -1,10 +1,10 @@
 """Kubernetes runtime error signatures."""
 
-from typing import List
+
 from devworkbench.signatures.base import BaseSignature
 
 
-def get_kubernetes_signatures() -> List[BaseSignature]:
+def get_kubernetes_signatures() -> list[BaseSignature]:
     return [
         BaseSignature(
             signature_id="K8S-001",

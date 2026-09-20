@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from devworkbench.models import (
     Diagnostic,
@@ -24,16 +24,16 @@ class RuleMetadata:
     severity: DiagnosticSeverity
     category: DiagnosticCategory
     description: str
-    rationale: Optional[str] = None
+    rationale: str | None = None
     provider: str = "devworkbench"
     provider_priority: int = 3
     rule_origin: str = "DevWorkBench rule engine"
-    documentation_url: Optional[str] = None
-    help_url: Optional[str] = None
+    documentation_url: str | None = None
+    help_url: str | None = None
     autofix_supported: bool = False
     fix_available: bool = False
-    fix_safety: Optional[FixSafety] = None
-    false_positive_notes: Optional[str] = None
+    fix_safety: FixSafety | None = None
+    false_positive_notes: str | None = None
 
 
 class BaseRule(ABC):
@@ -43,7 +43,6 @@ class BaseRule(ABC):
     @abstractmethod
     def metadata(self) -> RuleMetadata:
         """Rule metadata."""
-        pass
 
     @abstractmethod
     def evaluate(
@@ -51,7 +50,6 @@ class BaseRule(ABC):
         file_path: Path,
         content: str,
         detection: FileDetection,
-        parsed_data: Optional[Any] = None,
-    ) -> List[Diagnostic]:
+        parsed_data: Any | None = None,
+    ) -> list[Diagnostic]:
         """Evaluate rule against file and return any diagnostics."""
-        pass

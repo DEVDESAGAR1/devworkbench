@@ -1,7 +1,6 @@
 """Unit tests for DevOps best-practice rules."""
 
 from pathlib import Path
-import pytest
 
 from devworkbench.models import FileCategory, FileDetection, Technology
 from devworkbench.rules.registry import RuleRegistry

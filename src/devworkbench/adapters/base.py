@@ -1,10 +1,9 @@
 """Base Adapter interface for technology-specific tooling in DevWorkBench."""
 
-import functools
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from devworkbench.models import (
     CommandExecution,
@@ -25,13 +24,13 @@ class BaseAdapter(ABC):
     """
 
     def __init__(self) -> None:
-        self.executions: List[CommandExecution] = []
+        self.executions: list[CommandExecution] = []
 
     def record_execution(self, execution: CommandExecution) -> None:
         """Record an execution telemetry object."""
         self.executions.append(execution)
 
-    def get_executions(self) -> List[CommandExecution]:
+    def get_executions(self) -> list[CommandExecution]:
         """Retrieve all recorded executions."""
         return list(self.executions)
 
@@ -40,7 +39,7 @@ class BaseAdapter(ABC):
         self.executions.clear()
 
     @staticmethod
-    def find_tool(tool_name: str) -> Optional[str]:
+    def find_tool(tool_name: str) -> str | None:
         """Find tool executable in PATH."""
         return shutil.which(tool_name)
 
@@ -48,19 +47,17 @@ class BaseAdapter(ABC):
     @abstractmethod
     def technology(self) -> Technology:
         """The technology managed by this adapter."""
-        pass
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Human-readable adapter name."""
-        pass
 
     def can_handle(self, detection: FileDetection) -> bool:
         """Return True if this adapter can process the detected file."""
         return detection.technology == self.technology
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         """Check if required external engines/tools are available.
 
         Returns:
@@ -68,7 +65,7 @@ class BaseAdapter(ABC):
         """
         return True, None
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
         """Analyze an individual file and return normalized diagnostics.
 
         Must NEVER modify the file.
@@ -76,15 +73,15 @@ class BaseAdapter(ABC):
         return []
 
     def analyze_project(
-        self, project_path: Path, chart: Optional[HelmChart] = None
-    ) -> List[Diagnostic]:
+        self, project_path: Path, chart: HelmChart | None = None
+    ) -> list[Diagnostic]:
         """Analyze a project-level entity (such as a Helm chart directory).
 
         Must NEVER modify any files.
         """
         return []
 
-    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> Tuple[bool, Optional[str]]:
+    def apply_fix(self, file_path: Path, candidate: FixCandidate) -> tuple[bool, str | None]:
         """Apply a safe native fix to the target file.
 
         Args:
@@ -97,14 +94,14 @@ class BaseAdapter(ABC):
         return False, f"Native fix not supported by {self.name}"
 
     # Optional granular lifecycle methods
-    def format(self, file_path: Path, check_only: bool = True) -> Dict[str, Any]:
+    def format(self, file_path: Path, check_only: bool = True) -> dict[str, Any]:
         """Format check only."""
         raise NotImplementedError(f"Format not implemented for {self.name}")
 
-    def lint(self, file_path: Path) -> List[Diagnostic]:
+    def lint(self, file_path: Path) -> list[Diagnostic]:
         """Lint check."""
         raise NotImplementedError(f"Lint not implemented for {self.name}")
 
-    def validate(self, file_path: Path) -> List[Diagnostic]:
+    def validate(self, file_path: Path) -> list[Diagnostic]:
         """Syntax / Schema validation."""
         raise NotImplementedError(f"Validate not implemented for {self.name}")

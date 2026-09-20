@@ -1,10 +1,7 @@
 """Dockerfile adapter utilizing Hadolint for container build best-practice linting."""
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from devworkbench.adapters.base import BaseAdapter
 from devworkbench.execution import CommandRunner
@@ -29,7 +26,7 @@ class DockerAdapter(BaseAdapter):
     def name(self) -> str:
         return "Hadolint"
 
-    def is_available(self) -> Tuple[bool, Optional[ToolWarning]]:
+    def is_available(self) -> tuple[bool, ToolWarning | None]:
         if self.find_tool("hadolint"):
             return True, None
         return False, ToolWarning(
@@ -39,8 +36,8 @@ class DockerAdapter(BaseAdapter):
             documentation_url="https://github.com/hadolint/hadolint",
         )
 
-    def analyze_file(self, file_path: Path, detection: FileDetection) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+    def analyze_file(self, file_path: Path, detection: FileDetection) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
         if not self.find_tool("hadolint"):
             return diagnostics
 

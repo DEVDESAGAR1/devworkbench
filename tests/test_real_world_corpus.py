@@ -1,13 +1,13 @@
 """Tests verifying DevWorkBench against real-world test corpus and edge cases."""
 
-import json
 from pathlib import Path
+
 from click.testing import CliRunner
 
 from devworkbench.cli import main
-from devworkbench.scanner import Scanner
 from devworkbench.configuration import ScanConfig
-from devworkbench.models import DiagnosticSeverity, DiagnosticCategory
+from devworkbench.models import DiagnosticCategory, DiagnosticSeverity
+from devworkbench.scanner import Scanner
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "real_world"
 
