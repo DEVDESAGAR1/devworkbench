@@ -5,6 +5,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
+from devworkbench import __version__
 from devworkbench.cli import main
 
 
@@ -21,7 +22,7 @@ def test_cli_version() -> None:
     runner = CliRunner()
     result = runner.invoke(main, ["version"])
     assert result.exit_code == 0
-    assert "DevWorkBench version 0.1.0" in result.output
+    assert f"DevWorkBench version {__version__}" in result.output
 
 
 def test_cli_scan_human_format() -> None:

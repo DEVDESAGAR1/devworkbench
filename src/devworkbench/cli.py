@@ -431,7 +431,7 @@ def analyze_build_cmd(
     runner = Runner()
     try:
         if log_path == "-":
-            stdin_stream = click.get_text_stream("stdin")
+            stdin_stream = sys.stdin
             runner.run_analyze_build(
                 log_path="-",
                 output_format=output_format,

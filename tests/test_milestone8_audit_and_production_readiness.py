@@ -1,11 +1,13 @@
 """Milestone 8: Production readiness, full audit, and release verification tests."""
 
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
 from click.testing import CliRunner
 
+from devworkbench import __version__
 from devworkbench.cli import main
 from devworkbench.models import Diagnostic, DiagnosticSeverity
 
@@ -15,7 +17,7 @@ def test_package_metadata_and_version():
     runner = CliRunner()
     result = runner.invoke(main, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert __version__ in result.output
 
 
 def test_cli_help_all_subcommands():
@@ -123,6 +125,14 @@ def test_wheel_archive_contents():
     """Verify built wheel exists, is valid zip, and contains required packages and metadata."""
     dist_dir = Path(__file__).parent.parent / "dist"
     wheels = list(dist_dir.glob("*.whl"))
+    if not wheels:
+        subprocess.run(
+            [sys.executable, "-m", "build", "--wheel", "--no-isolation"],
+            cwd=dist_dir.parent,
+            check=True,
+            capture_output=True,
+        )
+        wheels = list(dist_dir.glob("*.whl"))
     assert len(wheels) > 0, "No built wheel found in dist/ directory"
     wheel_path = wheels[0]
 

@@ -39,10 +39,6 @@ jobs:
         run: |
           ruff check src tests
 
-      - name: Run pytest test suite
-        run: |
-          python -m pytest -v
-
       - name: Build distribution packages
         run: |
           python -m build
@@ -50,3 +46,7 @@ jobs:
       - name: Validate distribution metadata
         run: |
           python -m twine check dist/*
+
+      - name: Run pytest test suite
+        run: |
+          python -m pytest -v

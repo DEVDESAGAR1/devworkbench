@@ -41,7 +41,7 @@ python -m pip install devworkbench
 
 ### 2. From Local Pre-Built Wheel (Air-Gapped / Corporate Network)
 ```bash
-python -m pip install dist/devworkbench-0.1.0-py3-none-any.whl
+python -m pip install dist/devworkbench-1.0.0-py3-none-any.whl
 ```
 
 ### 3. Fully Offline with Local Wheels Directory
