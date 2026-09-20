@@ -126,12 +126,25 @@ def test_wheel_archive_contents():
     dist_dir = Path(__file__).parent.parent / "dist"
     wheels = list(dist_dir.glob("*.whl"))
     if not wheels:
-        subprocess.run(
-            [sys.executable, "-m", "build", "--wheel", "--no-isolation"],
+        res = subprocess.run(
+            [sys.executable, "-m", "build", "--wheel"],
             cwd=dist_dir.parent,
-            check=True,
             capture_output=True,
+            text=True,
         )
+        if res.returncode != 0:
+            res_fallback = subprocess.run(
+                [sys.executable, "-m", "build", "--wheel", "--no-isolation"],
+                cwd=dist_dir.parent,
+                capture_output=True,
+                text=True,
+            )
+            if res_fallback.returncode != 0:
+                raise RuntimeError(
+                    f"Auto-building wheel failed:\n"
+                    f"Standard build stderr:\n{res.stderr}\n"
+                    f"No-isolation build stderr:\n{res_fallback.stderr}"
+                )
         wheels = list(dist_dir.glob("*.whl"))
     assert len(wheels) > 0, "No built wheel found in dist/ directory"
     wheel_path = wheels[0]

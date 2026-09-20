@@ -49,6 +49,8 @@ dev = [
     "yamllint>=1.35.0",
     "build>=1.0.0",
     "twine>=5.0.0",
+    "setuptools>=61.0",
+    "wheel",
 ]
 
 [project.scripts]
