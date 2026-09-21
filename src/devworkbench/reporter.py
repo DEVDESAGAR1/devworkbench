@@ -652,6 +652,151 @@ class HumanReporter:
         self.console.print(f"  Duration:       [dim]{sum_data.duration_ms:.2f} ms[/dim]\n")
         self.console.print("[dim]---------------------------------------------[/dim]\n")
 
+    def report_workspace_candidates(self, info: dict[str, Any]) -> None:
+        """Report discovered candidates in current workspace."""
+        self.console.print("\n[bold cyan]Scanning current directory...[/bold cyan]\n")
+        self.console.print("[bold]Detected technologies:[/bold]")
+        if info.get("k8s_resources_count", 0) > 0:
+            self.console.print(f"  {self.icon_ok} [green]Kubernetes manifests[/green]")
+        if info.get("helm_charts"):
+            self.console.print(f"  {self.icon_ok} [green]Existing Helm chart(s):[/green] {', '.join(info['helm_charts'])}")
+        for tech in info.get("other_technologies", []):
+            self.console.print(f"  {self.icon_ok} [cyan]{tech}[/cyan]")
+        self.console.print()
+
+        k8s_by_kind = info.get("k8s_by_kind", {})
+        if k8s_by_kind:
+            self.console.print("[bold]Kubernetes resources:[/bold]")
+            for kind, count in k8s_by_kind.items():
+                self.console.print(f"  {kind:<18} [bold cyan]{count}[/bold cyan]")
+            self.console.print()
+
+    def report_migration_plan(self, plan: Any) -> None:
+        """Render migration plan and dependency graph."""
+        self.console.print("\n[bold cyan]DevWorkBench - Kubernetes to Helm Migration Plan[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        self.console.print(f"Target Chart Name: [bold green]{plan.target_chart_name}[/bold green]")
+        self.console.print(f"Target Directory:  [bold]{plan.target_directory}[/bold]")
+        if plan.reference_name:
+            self.console.print(f"Reference Pattern: [bold cyan]{plan.reference_name}[/bold cyan]")
+        self.console.print(f"Discovered:        [bold]{len(plan.discovered_resources)} Kubernetes resources[/bold]\n")
+
+        if plan.relationships:
+            self.console.print("[bold yellow]Resource References & Dependencies:[/bold yellow]")
+            for rel in plan.relationships:
+                status_str = rel.status.value if hasattr(rel.status, "value") else str(rel.status)
+                if status_str == "REFERENCED_AND_PRESENT":
+                    icon = self.icon_ok
+                    st_desc = "[green]PRESENT[/green]"
+                elif status_str == "REFERENCED_BUT_MISSING":
+                    icon = self.icon_err
+                    st_desc = "[bold red]MISSING[/bold red]"
+                else:
+                    icon = self.icon_info
+                    st_desc = f"[dim]{status_str}[/dim]"
+
+                self.console.print(f"  {icon} [bold]{rel.source_kind}/{rel.source_name}[/bold] -> [cyan]{rel.target_kind}/{rel.target_name}[/cyan] ({st_desc})")
+                if rel.details:
+                    self.console.print(f"     [dim]{rel.details}[/dim]")
+            self.console.print()
+
+        self.console.print("[bold]Planned Helm Templates:[/bold]")
+        for item in plan.planned_items:
+            priority_str = f" [{item.priority}]" if hasattr(item, "priority") and item.priority else ""
+            prov = f"[dim]({item.provider}{priority_str})[/dim]"
+            self.console.print(f"  {self.icon_ok} [bold green]{item.target_file:<30}[/bold green] from [cyan]{item.source_resource:<25}[/cyan] {prov}")
+            self.console.print(f"     [dim]{item.reason}[/dim]")
+        self.console.print("\n[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_migration_results(self, result: Any) -> None:
+        """Render final migration results, traceability, and validation."""
+        self.console.print("\n[bold green]DevWorkBench - Migration Completed Successfully[/bold green]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        self.console.print(f"Chart Generated:   [bold cyan]{result.chart_name}[/bold cyan]")
+        self.console.print(f"Chart Location:    [bold]{result.target_dir}[/bold]")
+        self.console.print(f"Execution Time:    [dim]{result.duration_ms:.2f} ms[/dim]\n")
+
+        if result.created_files:
+            self.console.print("[bold]Generated Files:[/bold]")
+            for f in result.created_files:
+                self.console.print(f"  {self.icon_ok} [green]{f}[/green]")
+            self.console.print()
+
+        if result.plan and result.plan.planned_items:
+            self.console.print("[bold]Resource Traceability:[/bold]")
+            for item in result.plan.planned_items:
+                priority_str = f" [{item.priority}]" if hasattr(item, "priority") and item.priority else ""
+                self.console.print(f"  [bold cyan]{item.target_file}[/bold cyan]")
+                self.console.print(f"    Source:    {item.source_resource}")
+                self.console.print(f"    Provider:  [bold]{item.provider}[/bold]{priority_str}")
+                if item.pattern_applied:
+                    self.console.print(f"    Reference: {item.pattern_applied}")
+                if item.reason:
+                    self.console.print(f"    Detail:    [dim]{item.reason}[/dim]")
+            self.console.print()
+
+        if result.validation_executions:
+            self.console.print("[bold]Validation Telemetry:[/bold]")
+            for ex in result.validation_executions:
+                if ex.status == "PASS":
+                    self.console.print(f"  {self.icon_ok} [bold green]{ex.command:<20}[/bold green] [dim]PASS ({ex.duration_ms:.1f}ms)[/dim]")
+                elif ex.status == "UNAVAILABLE":
+                    self.console.print(f"  {self.icon_warn} [bold yellow]{ex.command:<20}[/bold yellow] [dim]UNAVAILABLE ({ex.unavailable_reason})[/dim]")
+                else:
+                    self.console.print(f"  {self.icon_err} [bold red]{ex.command:<20}[/bold red] [red]FAIL (exit {ex.exit_code})[/red]")
+            self.console.print()
+
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_examples_list(self, examples: list[dict[str, Any]]) -> None:
+        """Render list of ingested reference examples."""
+        self.console.print("\n[bold cyan]DevWorkBench - Ingested Reference Chart Examples[/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        if not examples:
+            self.console.print("  [italic dim]No reference examples ingested yet. Add one using:[/italic dim]")
+            self.console.print("  [cyan]devworkbench examples add ./my-chart --name company-standard[/cyan]\n")
+            return
+
+        for ex in examples:
+            features: list[str] = []
+            if ex.get("has_hpa"):
+                features.append("HPA")
+            if ex.get("has_ingress"):
+                features.append("Ingress")
+            feat_str = f" [cyan][{', '.join(features)}][/cyan]" if features else ""
+            self.console.print(f"  {self.icon_ok} [bold green]{ex['name']:<25}[/bold green] (Chart: {ex['chart_name']} v{ex['chart_version']}) {feat_str}")
+            self.console.print(f"     [dim]{ex['templates_count']} templates | Prefix: '{ex.get('helper_prefix', '')}'[/dim]")
+        self.console.print("\n[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+    def report_example_details(self, pattern: Any) -> None:
+        """Render detailed inspection of an ingested reference chart."""
+        self.console.print(f"\n[bold cyan]Reference Chart Example: [bold green]{pattern.name}[/bold green][/bold cyan]")
+        self.console.print("[dim]--------------------------------------------------------------------------------[/dim]\n")
+
+        self.console.print(f"Chart Name:     [bold]{pattern.chart_name}[/bold]")
+        self.console.print(f"Chart Version:  {pattern.chart_version}")
+        self.console.print(f"App Version:    {pattern.app_version}")
+        self.console.print(f"Helper Prefix:  [cyan]{pattern.helper_prefix}[/cyan]")
+        self.console.print(f"Source Path:    [dim]{pattern.source_dir or 'N/A'}[/dim]\n")
+
+        self.console.print("[bold]Detected Templates:[/bold]")
+        for t in pattern.templates_found:
+            self.console.print(f"  {self.icon_ok} {t}")
+        self.console.print()
+
+        if pattern.label_scheme:
+            self.console.print("[bold]Label Scheme Conventions:[/bold]")
+            for k, v in list(pattern.label_scheme.items())[:6]:
+                self.console.print(f"  [dim]{k}:[/dim] {v}")
+            self.console.print()
+
+        self.console.print(f"HPA Support:     {'[green]Yes[/green]' if pattern.has_hpa else '[dim]No[/dim]'}")
+        self.console.print(f"Ingress Support: {'[green]Yes[/green]' if pattern.has_ingress else '[dim]No[/dim]'}")
+        self.console.print("\n[dim]--------------------------------------------------------------------------------[/dim]\n")
+
 
 class JsonReporter:
     """Serializes scan and build log results into formatted, stable JSON output."""

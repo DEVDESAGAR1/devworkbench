@@ -41,7 +41,7 @@ python -m pip install devworkbench
 
 ### 2. From Local Pre-Built Wheel (Air-Gapped / Corporate Network)
 ```bash
-python -m pip install dist/devworkbench-1.0.0-py3-none-any.whl
+python -m pip install dist/devworkbench-1.1.0-py3-none-any.whl
 ```
 
 ### 3. Fully Offline with Local Wheels Directory
@@ -144,7 +144,64 @@ devworkbench analyze-build build.log --json -o build-report.json
 
 ---
 
-### 4. Explicit Tool & Dependency Setup
+### 4. Reference-Aware Helm Migration & Example Ingestion
+
+DevWorkBench provides a deterministic, local-first **Kubernetes-to-Helm migration engine** that operates across entire workspaces and directories rather than individual files.
+
+```text
+Input Kubernetes Resources + Reference Chart Pattern -> Generated Helm Chart -> Native/OSS Validation
+```
+
+#### Core Architectural Principles
+* **INPUT determines WHAT resources are generated**: The input directory determines which resources exist. DevWorkBench will **never** generate a resource merely because the reference chart contains it.
+* **REFERENCE determines HOW matching resources are structured**: Conventions, helper prefixes (`_helpers.tpl`), label schemes (`app.kubernetes.io/*`), and values hierarchies are adopted from the reference chart.
+* **Helmify Open-Source Orchestration**: Helmify is integrated as an `OPEN_SOURCE` provider (Priority 2) in the Mandatory Tool Selection Hierarchy. DevWorkBench orchestrates Helmify for baseline manifest conversion when available, normalizing its output, overlaying reference patterns, and providing transparent command telemetry.
+* **First-Class HPA Support**: Full `autoscaling/v2` support (CPU, memory, custom metrics) parameterized cleanly into `values.yaml` and gated in Deployments, preserved faithfully even when baseline converters omit it.
+* **Graceful Fallback & Immutability**: If Helmify is unavailable or fails, DevWorkBench deterministically falls back to its internal generator. Input directories and reference directories remain strictly read-only.
+
+#### Migration Workflow
+```bash
+# Basic directory migration (auto-selects Helmify if available, else DevWorkBench)
+devworkbench migrate ./k8s --to helm
+
+# With a reference Helm chart directory
+devworkbench migrate ./k8s --to helm --reference ./company-helm-example --output ./generated-chart
+
+# Using an ingested reference example
+devworkbench migrate ./k8s --to helm --example company-standard --output ./generated-chart
+
+# Explicitly choose provider (auto, opensource, devworkbench)
+devworkbench migrate ./k8s --to helm --provider devworkbench
+
+# Preview migration plan and dependency graph without writing files
+devworkbench migrate ./k8s --to helm --reference ./company-helm-example --dry-run
+
+# Output structured JSON migration report with full provider traceability
+devworkbench migrate ./k8s --to helm --json
+```
+
+#### Reusable Example Ingestion System
+```bash
+# Ingest and analyze a reference chart into local storage
+devworkbench examples add ./company-helm-example --name company-standard
+
+# List all stored reference examples
+devworkbench examples list
+
+# Inspect detected conventions and templates of an example
+devworkbench examples inspect company-standard
+
+# Remove an example
+devworkbench examples remove company-standard
+
+# Standalone inspection of any Helm chart without saving
+devworkbench helm inspect ./company-helm-example
+```
+
+
+---
+
+### 5. Explicit Tool & Dependency Setup
 
 DevWorkBench **NEVER** downloads or installs tools automatically during normal scan/fix commands. Explicit installation is performed only via `setup`:
 
@@ -171,7 +228,7 @@ devworkbench setup --json
 
 ---
 
-### 5. Capabilities & Tool Hierarchy Introspection
+### 6. Capabilities & Tool Hierarchy Introspection
 
 DevWorkBench implements a **Mandatory Tool Selection Hierarchy** across all technologies:
 1. **Priority 1 (Native)**: Official ecosystem CLI (e.g. `helm`, `terraform`, `tofu`, `shellcheck`, `hadolint`, `ruff`).

@@ -614,5 +614,226 @@ def convert_cmd(
         sys.exit(1)
 
 
+# ============================================================================
+# MILESTONE 9: REFERENCE-AWARE HELM MIGRATION & EXAMPLE INGESTION
+# ============================================================================
+
+
+@main.command(name="migrate")
+@click.argument("input_dir", required=False, type=click.Path())
+@click.option(
+    "--to",
+    "to_format",
+    type=click.Choice(["helm"], case_sensitive=False),
+    default="helm",
+    help="Target migration format (default: helm).",
+)
+@click.option(
+    "-r",
+    "--reference",
+    "reference",
+    type=str,
+    default=None,
+    help="Reference Helm chart directory path or 'auto' to discover in workspace.",
+)
+@click.option(
+    "-e",
+    "--example",
+    "example_name",
+    type=str,
+    default=None,
+    help="Name of a previously ingested reference example.",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_dir",
+    type=click.Path(),
+    default=None,
+    help="Target output directory for the generated chart.",
+)
+@click.option(
+    "--name",
+    "chart_name",
+    type=str,
+    default=None,
+    help="Explicit name for the generated Helm chart.",
+)
+@click.option(
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
+    help="Preview migration plan and dependencies without creating files.",
+)
+@click.option(
+    "--force",
+    "force",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing template files in target chart directory.",
+)
+@click.option(
+    "-y",
+    "--yes",
+    "yes_flag",
+    is_flag=True,
+    default=False,
+    help="Bypass confirmation when auto-discovering Kubernetes manifests in CWD.",
+)
+@click.option(
+    "-f",
+    "--format",
+    "output_format",
+    type=click.Choice(["human", "json"], case_sensitive=False),
+    default="human",
+    help="Output format (human-readable terminal output or structured JSON).",
+)
+@click.option(
+    "-p",
+    "--provider",
+    "provider_preference",
+    type=str,
+    default="auto",
+    help="Provider selection preference: 'auto', 'opensource', 'devworkbench', or 'manual'.",
+)
+@click.option(
+    "--json",
+    "json_flag",
+    is_flag=True,
+    default=False,
+    help="Shortcut for --format json.",
+)
+def migrate_cmd(
+    input_dir: str | None,
+    to_format: str,
+    reference: str | None,
+    example_name: str | None,
+    output_dir: str | None,
+    chart_name: str | None,
+    dry_run: bool,
+    force: bool,
+    yes_flag: bool,
+    output_format: str,
+    json_flag: bool,
+    provider_preference: str,
+) -> None:
+    """Migrate a Kubernetes directory or workspace to a reference-aware Helm chart."""
+    if json_flag:
+        output_format = "json"
+
+    runner = Runner()
+    try:
+        res = runner.run_migrate(
+            input_dir=input_dir,
+            to_format=to_format,
+            reference=reference,
+            example_name=example_name,
+            output_dir=output_dir,
+            chart_name=chart_name,
+            dry_run=dry_run,
+            force=force,
+            output_format=output_format,
+            auto_confirm=yes_flag,
+            provider_preference=provider_preference,
+        )
+        if res is None and not dry_run:
+            # User canceled discovery prompt
+            sys.exit(0)
+    except Exception as e:
+        error_console.print(f"[bold red]Migration failed:[/bold red] {e}")
+        sys.exit(1)
+
+
+@main.group(name="examples")
+def examples_group() -> None:
+    """Ingest, inspect, and manage reusable reference Helm chart examples."""
+
+
+@examples_group.command(name="add")
+@click.argument("chart_path", type=click.Path(exists=True, file_okay=False))
+@click.option("--name", "name", type=str, default=None, help="Name for the reference example (defaults to chart name).")
+@click.option("-f", "--format", "output_format", type=click.Choice(["human", "json"], case_sensitive=False), default="human")
+@click.option("--json", "json_flag", is_flag=True, default=False, help="Shortcut for --format json.")
+def examples_add_cmd(chart_path: str, name: str | None, output_format: str, json_flag: bool) -> None:
+    """Add and ingest a Helm chart directory as a named reference pattern."""
+    if json_flag:
+        output_format = "json"
+    runner = Runner()
+    try:
+        runner.run_examples_add(chart_dir=chart_path, name=name, output_format=output_format)
+    except Exception as e:
+        error_console.print(f"[bold red]Failed to add example:[/bold red] {e}")
+        sys.exit(1)
+
+
+@examples_group.command(name="list")
+@click.option("-f", "--format", "output_format", type=click.Choice(["human", "json"], case_sensitive=False), default="human")
+@click.option("--json", "json_flag", is_flag=True, default=False, help="Shortcut for --format json.")
+def examples_list_cmd(output_format: str, json_flag: bool) -> None:
+    """List all locally ingested reference chart examples."""
+    if json_flag:
+        output_format = "json"
+    runner = Runner()
+    try:
+        runner.run_examples_list(output_format=output_format)
+    except Exception as e:
+        error_console.print(f"[bold red]Failed to list examples:[/bold red] {e}")
+        sys.exit(1)
+
+
+@examples_group.command(name="inspect")
+@click.argument("name", type=str)
+@click.option("-f", "--format", "output_format", type=click.Choice(["human", "json"], case_sensitive=False), default="human")
+@click.option("--json", "json_flag", is_flag=True, default=False, help="Shortcut for --format json.")
+def examples_inspect_cmd(name: str, output_format: str, json_flag: bool) -> None:
+    """Inspect patterns and conventions extracted from a named reference example."""
+    if json_flag:
+        output_format = "json"
+    runner = Runner()
+    try:
+        runner.run_examples_inspect(name=name, output_format=output_format)
+    except Exception as e:
+        error_console.print(f"[bold red]Failed to inspect example '{name}':[/bold red] {e}")
+        sys.exit(1)
+
+
+@examples_group.command(name="remove")
+@click.argument("name", type=str)
+@click.option("-f", "--format", "output_format", type=click.Choice(["human", "json"], case_sensitive=False), default="human")
+@click.option("--json", "json_flag", is_flag=True, default=False, help="Shortcut for --format json.")
+def examples_remove_cmd(name: str, output_format: str, json_flag: bool) -> None:
+    """Remove a reference example from local storage."""
+    if json_flag:
+        output_format = "json"
+    runner = Runner()
+    try:
+        runner.run_examples_remove(name=name, output_format=output_format)
+    except Exception as e:
+        error_console.print(f"[bold red]Failed to remove example '{name}':[/bold red] {e}")
+        sys.exit(1)
+
+
+@main.group(name="helm")
+def helm_group() -> None:
+    """Helm-specific utilities and inspections."""
+
+
+@helm_group.command(name="inspect")
+@click.argument("chart_path", type=click.Path(exists=True, file_okay=False))
+@click.option("-f", "--format", "output_format", type=click.Choice(["human", "json"], case_sensitive=False), default="human")
+@click.option("--json", "json_flag", is_flag=True, default=False, help="Shortcut for --format json.")
+def helm_inspect_cmd(chart_path: str, output_format: str, json_flag: bool) -> None:
+    """Inspect conventions, templates, and values of any Helm chart directory."""
+    if json_flag:
+        output_format = "json"
+    runner = Runner()
+    try:
+        runner.run_helm_inspect(chart_dir=chart_path, output_format=output_format)
+    except Exception as e:
+        error_console.print(f"[bold red]Failed to inspect Helm chart:[/bold red] {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()

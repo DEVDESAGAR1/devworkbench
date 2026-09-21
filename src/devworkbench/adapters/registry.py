@@ -7,6 +7,7 @@ from devworkbench.adapters.base import BaseAdapter
 from devworkbench.adapters.checkov_adapter import CheckovAdapter
 from devworkbench.adapters.docker_adapter import DockerAdapter
 from devworkbench.adapters.helm_adapter import HelmAdapter
+from devworkbench.adapters.helmify_adapter import HelmifyAdapter
 from devworkbench.adapters.jenkins_adapter import JenkinsAdapter
 from devworkbench.adapters.kubelinter_adapter import KubeLinterAdapter
 from devworkbench.adapters.python_adapter import PythonAdapter
@@ -34,6 +35,7 @@ class AdapterRegistry:
             ActionlintAdapter(),
             AnsibleLintAdapter(),
             HelmAdapter(),
+            HelmifyAdapter(),
         ]
 
     def get_adapters_for_file(self, detection: FileDetection) -> list[BaseAdapter]:

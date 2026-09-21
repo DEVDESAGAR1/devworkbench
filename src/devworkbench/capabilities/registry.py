@@ -111,6 +111,33 @@ class CapabilityRegistry:
             version_fn=lambda: _get_binary_version("helm", ["version", "--short"]),
         ))
 
+        self.register(ToolProvider(
+            name="helmify",
+            technology=Technology.HELM,
+            capability=CapabilityType.HELM_CONVERSION,
+            priority=ToolPriority.OPENSOURCE,
+            source="CLI binary",
+            license="MIT",
+            real_command="helmify",
+            install_method=InstallMethod.SYSTEM_PACKAGE,
+            install_hint="Install Helmify from https://github.com/arttor/helmify",
+            documentation_url="https://github.com/arttor/helmify",
+            is_available_fn=lambda: _is_binary_available("helmify"),
+            version_fn=lambda: _get_binary_version("helmify", ["--version"]),
+        ))
+
+        self.register(ToolProvider(
+            name="devworkbench-to-helm",
+            technology=Technology.HELM,
+            capability=CapabilityType.HELM_CONVERSION,
+            priority=ToolPriority.DEVWORKBENCH,
+            source="Internal engine",
+            license="Apache-2.0",
+            real_command="internal-helm-converter",
+            install_method=InstallMethod.BUILTIN,
+            is_available_fn=lambda: True,
+        ))
+
         # ------------------ TERRAFORM / OPENTOFU ------------------
         self.register(ToolProvider(
             name="terraform",
